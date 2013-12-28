@@ -1,4 +1,5 @@
 .banner-nav {
+  font-size: 0;
   background: #0d1b28;
   color: #fff;
   border-radius: 0 0 5px 5px;
@@ -8,12 +9,10 @@
 }
 
 .banner-nav li {
+  font-size: 21px;
   display: inline-block;
   margin: 0;
   padding: 0 15px;
-}
-.banner-nav:first-child {
-  margin-left: 5px;
 }
 
 .banner-nav li:hover, .banner-nav li a:hover {
