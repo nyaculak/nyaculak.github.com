@@ -1,0 +1,26 @@
+.banner-nav {
+  background: #0d1b28;
+  color: #fff;
+  border-radius: 0 0 5px 5px;
+  list-style-type: none;
+  -webkit-padding-start: 0px;
+  -moz-padding-start: 0px;
+}
+
+.banner-nav li {
+  display: inline-block;
+  margin: 0;
+  padding: 0 15px;
+}
+.banner-nav li:first-child {
+  margin-left: 5px;
+}
+
+.banner-nav li:hover, .banner-nav li a:hover {
+  background: #25313d;
+  text-decoration: none;
+}
+
+.banner-nav li a, .banner-nav a li {
+  color: #fff;
+}
