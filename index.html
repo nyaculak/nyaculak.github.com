@@ -48,6 +48,9 @@
 <body>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
   <script>
+  // predicates
+  var CHILD_PRED = "http://purl.org/gem/qualifiers/hasChild";
+  var DESCR_PRED = "http://purl.org/dc/terms/description";
   var ROOT_NAME = "http://asn.jesandco.org/resources/D10003FB";
   var margin = {top: 20, right: 120, bottom: 20, left: 120},
       width = 1200 - margin.right - margin.left,
@@ -69,28 +72,17 @@
     .append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-
   function children(d) {
-
-    var predicate = "http://purl.org/gem/qualifiers/hasChild";
-
     var children = [];
-
-    if (d[predicate])
-      d[predicate].forEach(function (d){children.push(root[d.value]);});
-
+    if (d[CHILD_PRED])
+      d[CHILD_PRED].forEach(function (d){children.push(root[d.value]);});
     return children;
   }
 
   function _children(d) {
-
-    var predicate = "_http://purl.org/gem/qualifiers/hasChild";
-
     var children = [];
-
-    if (d[predicate])
-      d[predicate].forEach(function (d){children.push(root[d.value]);});
-
+    if (d["_" + CHILD_PRED])
+      d["_" + CHILD_PRED].forEach(function (d){children.push(root[d.value]);});
     return children;
   }
 
@@ -102,10 +94,10 @@
     root.y0 = 0;
 
     function collapse(d) {
-      if (d["http://purl.org/gem/qualifiers/hasChild"]) {
-        d["_http://purl.org/gem/qualifiers/hasChild"] = d["http://purl.org/gem/qualifiers/hasChild"];
+      if (d[CHILD_PRED]) {
+        d["_" + CHILD_PRED] = d[CHILD_PRED];
         _children(d).forEach(collapse);
-        d["http://purl.org/gem/qualifiers/hasChild"] = null;
+        d[CHILD_PRED] = null;
       }
     }
 
@@ -117,13 +109,11 @@
 
   function update(source) {
 
-    // convert json
-    var root_name = "http://asn.jesandco.org/resources/D10003FB";
-
+    // needed so the layout can access children
     tree.children(children);
 
     // Compute the new tree layout.
-    var nodes = tree.nodes(root[root_name]).reverse(),
+    var nodes = tree.nodes(root[ROOT_NAME]).reverse(),
         links = tree.links(nodes);
 
     // Normalize for fixed-depth.
@@ -141,14 +131,14 @@
 
     nodeEnter.append("circle")
         .attr("r", 1e-6)
-        .style("fill", function(d) { return d["_http://purl.org/gem/qualifiers/hasChild"] ? "lightsteelblue" : "#fff"; });
+        .style("fill", function(d) { return d["_" + CHILD_PRED] ? "lightsteelblue" : "#fff"; });
 
     nodeEnter.append("text")
-        .attr("x", function(d) { return d["http://purl.org/gem/qualifiers/hasChild"] || d["_http://purl.org/gem/qualifiers/hasChild"] ? -10 : 10; })
+        .attr("x", function(d) { return d[CHILD_PRED] || d["_" + CHILD_PRED] ? -10 : 10; })
         .attr("dy", ".35em")
-        .attr("text-anchor", function(d) { return d["http://purl.org/gem/qualifiers/hasChild"] || d["_http://purl.org/gem/qualifiers/hasChild"] ? "end" : "start"; })
+        .attr("text-anchor", function(d) { return d[CHILD_PRED] || d["_" + CHILD_PRED] ? "end" : "start"; })
         .text(function(d) {
-          var text = d["http://purl.org/dc/terms/description"];
+          var text = d[DESCR_PRED];
           return text ? text[0].value.substr(0, 5) : "none!";
         })
         .style("fill-opacity", 1e-6);
@@ -212,13 +202,12 @@
 
   // Toggle children on click.
   function click(d) {
-
-    if (d["http://purl.org/gem/qualifiers/hasChild"]) {
-      d["_http://purl.org/gem/qualifiers/hasChild"] = d["http://purl.org/gem/qualifiers/hasChild"];
-      d["http://purl.org/gem/qualifiers/hasChild"] = null;
+    if (d[CHILD_PRED]) {
+      d["_" + CHILD_PRED] = d[CHILD_PRED];
+      d[CHILD_PRED] = null;
     } else {
-      d["http://purl.org/gem/qualifiers/hasChild"] = d["_http://purl.org/gem/qualifiers/hasChild"];
-      d["_http://purl.org/gem/qualifiers/hasChild"] = null;
+      d[CHILD_PRED] = d["_" + CHILD_PRED];
+      d["_" + CHILD_PRED] = null;
     }
     update(d);
   }
