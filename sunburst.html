@@ -30,7 +30,8 @@
 
     var svg = d3.select("body").append("svg")
       .attr("width", width)
-      .attr("height", height);
+      .attr("height", height + 25)
+      .attr("display", "inline-block");
 
     var text = svg.append("g")
       .attr("transform", "translate(0, 20)")
@@ -38,7 +39,7 @@
       .attr("id", "text");
 
     svg = svg.append("g")
-      .attr("transform", "translate(" + (width / 2) + "," + (height / 2) + ")");
+      .attr("transform", "translate(" + (width / 2) + "," + (height / 2 + 25) + ")");
 
     var partition = d3.layout.partition()
       .sort(null)
