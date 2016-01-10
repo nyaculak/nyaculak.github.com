@@ -11,6 +11,9 @@
 </head>
 <body>
   <style>
+    body {
+      text-align:center;
+    }
     path:hover {
       opacity: .5;
     }
@@ -23,23 +26,31 @@
     var ROOT_NAME = "http://asn.jesandco.org/resources/D10003FB";
     var data,
         i = 0,
-        width  = 600,
-        height = 600,
+        width  = 400, // 600
+        height = 400,
         radius = Math.min(width, height) / 2,
         color  = d3.scale.category10();
 
     var svg = d3.select("body").append("svg")
-      .attr("width", width)
-      .attr("height", height + 25)
-      .attr("display", "inline-block");
+      .attr("width", width * 3 + 20 + 20)
+      .attr("height", 600)
+      .attr("margin", "0 auto");
 
     var text = svg.append("g")
       .attr("transform", "translate(0, 20)")
       .append("text")
       .attr("id", "text");
 
+    var mastersvg = svg;
+
     svg = svg.append("g")
-      .attr("transform", "translate(" + (width / 2) + "," + (height / 2 + 25) + ")");
+      .attr("transform", "translate(" + (width / 2 + 10) + "," + (height / 2 + 25) + ")");
+
+    var svg2 = mastersvg.append("g")
+      .attr("transform", "translate(" + (3 * width / 2 + 20) + "," + (height / 2 + 25) + ")");
+
+    var svg3 = mastersvg.append("g")
+      .attr("transform", "translate(" + (5 * width / 2 + 30) + "," + (height / 2 + 25) + ")");
 
     var partition = d3.layout.partition()
       .sort(null)
@@ -89,6 +100,34 @@
 
         paths.attr("d", arc);
         paths.exit().remove();
+
+        paths = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+        paths.enter()
+          .append("path")
+          .attr("d", arc)
+          .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
+          .style("fill", function(d) { return color(d.id); })
+          .style("stroke", "#fff")
+          .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
+          .on('mouseout',  function(d) { text.text("");})
+          .on('click', click);
+
+          paths.attr("d", arc);
+          paths.exit().remove();
+
+          paths = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+          paths.enter()
+            .append("path")
+            .attr("d", arc)
+            .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
+            .style("fill", function(d) { return color(d.id); })
+            .style("stroke", "#fff")
+            .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
+            .on('mouseout',  function(d) { text.text("");})
+            .on('click', click);
+
+            paths.attr("d", arc);
+            paths.exit().remove();
     }
     d3.json("/data/s1.json", function(error, json) {
       if(error) throw error;
