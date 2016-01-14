@@ -25,7 +25,8 @@
     var DESCR_PRED = "http://purl.org/dc/terms/description";
     var ROOT_NAME = "http://asn.jesandco.org/resources/D10003FB";
     var ROOT_NAME_T1 = "http://asn.jesandco.org/resources/D10003B9";
-    var data, data_t1,
+    var ROOT_NAME_T2 = "http://asn.jesandco.org/resources/D100029D";
+    var data, data_t1, data_t2,
         i = 0,
         width  = 400, // 600
         height = 400,
@@ -65,6 +66,12 @@
       .size([2 * Math.PI, radius * radius])
       .children(children_t1);
 
+    var partition_t2 = d3.layout.partition()
+      .sort(null)
+      .value(function (d) {return 1})
+      .size([2 * Math.PI, radius * radius])
+      .children(children_t2);
+
     var arc = d3.svg.arc()
       .startAngle(function(d) { return d.x; })
       .endAngle(function(d) { return d.x + d.dx; })
@@ -82,6 +89,13 @@
       var children = [];
       if (d[CHILD_PRED])
         d[CHILD_PRED].forEach(function (d){children.push(data_t1[d.value]);});
+      return children;
+    }
+
+    function children_t2(d) {
+      var children = [];
+      if (d[CHILD_PRED])
+        d[CHILD_PRED].forEach(function (d){children.push(data_t2[d.value]);});
       return children;
     }
 
@@ -129,6 +143,7 @@
       paths.attr("d", arc);
       paths.exit().remove();
 
+      nodes = partition_t2.nodes(data_t2[ROOT_NAME_T2]);
       paths = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
       paths.enter()
         .append("path")
@@ -144,10 +159,13 @@
     }
     d3.json("/data/s1.json", function(error, json) {
       d3.json("/data/t1.json", function(error2, json2) {
-        if(error || error2) throw error;
-        data = json;
-        data_t1 = json2;
-        render();
+        d3.json("/data/t2.json", function(error3, json3) {
+          if(error || error2 || error3) throw error;
+          data = json;
+          data_t1 = json2;
+          data_t2 = json3;
+          render();
+        });
       });
     });
 
