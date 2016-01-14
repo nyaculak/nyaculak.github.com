@@ -24,7 +24,8 @@
     var HIDDEN_CHILD_PRED = "_http://purl.org/gem/qualifiers/hasChild";
     var DESCR_PRED = "http://purl.org/dc/terms/description";
     var ROOT_NAME = "http://asn.jesandco.org/resources/D10003FB";
-    var data,
+    var ROOT_NAME_T1 = "http://asn.jesandco.org/resources/D10003B9";
+    var data, data_t1,
         i = 0,
         width  = 400, // 600
         height = 400,
@@ -58,6 +59,12 @@
       .size([2 * Math.PI, radius * radius])
       .children(children);
 
+    var partition_t1 = d3.layout.partition()
+      .sort(null)
+      .value(function (d) {return 1})
+      .size([2 * Math.PI, radius * radius])
+      .children(children_t1);
+
     var arc = d3.svg.arc()
       .startAngle(function(d) { return d.x; })
       .endAngle(function(d) { return d.x + d.dx; })
@@ -68,6 +75,13 @@
       var children = [];
       if (d[CHILD_PRED])
         d[CHILD_PRED].forEach(function (d){children.push(data[d.value]);});
+      return children;
+    }
+
+    function children_t1(d) {
+      var children = [];
+      if (d[CHILD_PRED])
+        d[CHILD_PRED].forEach(function (d){children.push(data_t1[d.value]);});
       return children;
     }
 
@@ -85,9 +99,10 @@
 
     function render() {
       // compute layout
-      var nodes = partition.nodes(data[ROOT_NAME]);
+      var nodes, paths;
 
-      var paths = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      nodes = partition_t1.nodes(data_t1[ROOT_NAME_T1]);
+      paths = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
       paths.enter()
         .append("path")
         .attr("d", arc)
@@ -97,48 +112,43 @@
         .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
         .on('mouseout',  function(d) { text.text("");})
         .on('click', click);
+      paths.attr("d", arc);
+      paths.exit().remove();
 
-        paths.attr("d", arc);
-        paths.exit().remove();
+      nodes = partition.nodes(data[ROOT_NAME]);
+      paths = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      paths.enter()
+        .append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
+        .style("fill", function(d) { return color(d.id); })
+        .style("stroke", "#fff")
+        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
+        .on('mouseout',  function(d) { text.text("");})
+        .on('click', click);
+      paths.attr("d", arc);
+      paths.exit().remove();
 
-        paths = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
-        paths.enter()
-          .append("path")
-          .attr("d", arc)
-          .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
-          .style("fill", function(d) { return color(d.id); })
-          .style("stroke", "#fff")
-          .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
-          .on('mouseout',  function(d) { text.text("");})
-          .on('click', click);
-
-          paths.attr("d", arc);
-          paths.exit().remove();
-
-          paths = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
-          paths.enter()
-            .append("path")
-            .attr("d", arc)
-            .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
-            .style("fill", function(d) { return color(d.id); })
-            .style("stroke", "#fff")
-            .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
-            .on('mouseout',  function(d) { text.text("");})
-            .on('click', click);
-
-            paths.attr("d", arc);
-            paths.exit().remove();
+      paths = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      paths.enter()
+        .append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
+        .style("fill", function(d) { return color(d.id); })
+        .style("stroke", "#fff")
+        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
+        .on('mouseout',  function(d) { text.text("");})
+        .on('click', click);
+      paths.attr("d", arc);
+      paths.exit().remove();
     }
     d3.json("/data/s1.json", function(error, json) {
-      if(error) throw error;
-      data = json;
-      function minimize(d) {
-        children(d).forEach(minimize);
-        d[HIDDEN_CHILD_PRED] = d[CHILD_PRED];
-        d[CHILD_PRED] = null;
-      }
-      children(data[ROOT_NAME]).forEach(minimize);
-      render();
+      d3.json("/data/t1.json", function(error2, json2) {
+        if(error || error2) throw error;
+        data = json;
+        data_t1 = json2;
+        render();
+      });
     });
 
   </script>
