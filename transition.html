@@ -15,10 +15,6 @@ form {
   top: 10px;
 }
 
-path {
-  stroke: #fff;
-  fill-rule: evenodd;
-}
 
 </style>
 <body>
@@ -70,6 +66,7 @@ d3.json("/data/flare.json", function(error, root) {
       .attr("d", arc)
       .style("fill", function(d) { return color((d.children ? d : d.parent).name); })
       .on("click", click)
+      .style("stroke", "#fff")
       .each(stash);
 
   d3.selectAll("input").on("change", function change() {
@@ -87,7 +84,6 @@ d3.json("/data/flare.json", function(error, root) {
   function walkTree(d, f) {
     if (d.children)
       d.children.forEach(function (x) { walkTree(x, f); });
-
     f(d);
   }
   function click(d) {
@@ -104,6 +100,7 @@ d3.json("/data/flare.json", function(error, root) {
     d._children.forEach(function (node) { walkTree(node, function (x) {
       x.x = d.x + d.dx / 2.;
       x.dx = 0;
+      x.y = d.y + d.dy;
 
       new_nodes.push(x);
     }); });
@@ -114,7 +111,12 @@ d3.json("/data/flare.json", function(error, root) {
         .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
       .transition()
         .duration(1000)
-        .attrTween("d", arcTweenData);
+        .attrTween("d", arcTweenData)
+        .attrTween("stroke-opacity", function (d, i) {
+          return d.dx == 0
+              ? function (t) { return 1 - t; }
+              : function (t) { return 1;}
+        });
   }
 });
 
