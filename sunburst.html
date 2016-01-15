@@ -151,7 +151,8 @@
             .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
             .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
           .transition()
-            .duration(1000)
+            .duration(450)
+            .ease("cubic-in-out")
             .attrTween("d", arcTweenData)
             .attrTween("display", function (d, i) {
               return d.depth == 0
