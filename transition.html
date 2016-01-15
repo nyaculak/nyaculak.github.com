@@ -53,6 +53,12 @@ var arc = d3.svg.arc()
     .innerRadius(function(d) { return Math.max(0, y(d.y)); })
     .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
 
+
+function walkTree(d, f) {
+  if (d.children)
+    d.children.forEach(function (x) { walkTree(x, f); });
+  f(d);
+}
 // Keep track of the node that is currently being displayed as the root.
 var node;
 
@@ -60,14 +66,34 @@ var node;
 var i = 0;
 d3.json("/data/flare.json", function(error, root) {
   node = root;
+  var nodes = partition.nodes(root);
+
+
+  walkTree(nodes[0], function(d) {
+    // give everyone a color
+    color((d.children ? d : d.parent).name);
+
+    if (d.depth > 0) {
+      d._children = d.children;
+      d.children  = null;
+    }
+    if (d.depth > 1) {
+      d.dx = 0;
+    }
+  });
+  //
+  partition.nodes(root);
+
   var path = svg.selectAll("path")
-      .data(partition.nodes(root), function(d) { return d.id || (d.id = ++i); })
+      .data(nodes, function(d) { return d.id || (d.id = ++i); })
     .enter().append("path")
       .attr("d", arc)
-      .style("fill", function(d) { return color((d.children ? d : d.parent).name); })
+      .attr("fill", function(d) { return color((d.children || d._children ? d : d.parent).name); })
       .on("click", click)
-      .style("stroke", "#fff")
+      .attr("stroke", "#fff")
+      .attr("stroke-opacity", function (d) { return d.dx == 0 ? "0" : "1"} )
       .each(stash);
+
 
   d3.selectAll("input").on("change", function change() {
     var value = this.value === "count"
@@ -81,29 +107,35 @@ d3.json("/data/flare.json", function(error, root) {
         .attrTween("d", arcTweenData);
   });
 
-  function walkTree(d, f) {
-    if (d.children)
-      d.children.forEach(function (x) { walkTree(x, f); });
-    f(d);
-  }
   function click(d) {
     // remove children of clicked node
+    console.log(d);
+    var buf = d._children;
     d._children = d.children;
-    d.children = null;
-    console.log(d.x);
+    d.children = buf;
+
     // compute the new layout
+    var old_d = {x: d.x, dx: d.dx, y: d.y, dy: d.dy};
     var new_nodes = partition.nodes(root);
     // find the new position of the clicked node
-    console.log(d.x);
+
     // update the removed children to have 0 area put occupy the correct position
     // add the children back into the nodes of the computed layout
-    d._children.forEach(function (node) { walkTree(node, function (x) {
-      x.x = d.x + d.dx / 2.;
-      x.dx = 0;
-      x.y = d.y + d.dy;
+    if (d._children)
+      d._children.forEach(function (node) { walkTree(node, function (x) {
+        x.x = d.x + d.dx / 2.;
+        x.dx = 0;
+        x.y = d.y + d.dy;
 
-      new_nodes.push(x);
-    }); });
+        new_nodes.push(x);
+      }); });
+
+    if (d.children)
+      d.children.forEach(function (node) { walkTree(node, function(x) {
+        x.x0 = old_d.x + old_d.dx / 2.;
+        x.dx0 = 0;
+        x.y0 = old_d.y + old_d.dy;
+      })});
 
 
     // apply transition
@@ -114,8 +146,8 @@ d3.json("/data/flare.json", function(error, root) {
         .attrTween("d", arcTweenData)
         .attrTween("stroke-opacity", function (d, i) {
           return d.dx == 0
-              ? function (t) { return 1 - t; }
-              : function (t) { return 1;}
+              ? function (t) { return 1; }
+              : function (t) { return 1;};
         });
   }
 });

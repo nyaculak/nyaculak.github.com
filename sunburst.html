@@ -86,7 +86,7 @@
     function render() {
       // compute layout
       var nodes = partition.nodes(data[ROOT_NAME]);
-
+      console.log(nodes);
       var paths = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
       paths.enter()
         .append("path")
@@ -134,10 +134,12 @@
       data = json;
       function minimize(d) {
         children(d).forEach(minimize);
+        console.log(d);
         d[HIDDEN_CHILD_PRED] = d[CHILD_PRED];
         d[CHILD_PRED] = null;
       }
-      children(data[ROOT_NAME]).forEach(minimize);
+
+      // children(data[ROOT_NAME]).forEach(minimize);
       render();
     });
 
