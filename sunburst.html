@@ -24,12 +24,24 @@
     var HIDDEN_CHILD_PRED = "_http://purl.org/gem/qualifiers/hasChild";
     var DESCR_PRED = "http://purl.org/dc/terms/description";
     var ROOT_NAME = "http://asn.jesandco.org/resources/D10003FB";
-    var data,
+    var ROOT_NAME_T1 = "http://asn.jesandco.org/resources/D10003B9";
+    var ROOT_NAME_T2 = "http://asn.jesandco.org/resources/D100029D";
+    var TARGET_URI = "subjectURI";
+    var SUBJECT_URI = "objectURI";
+    var data_s1, data_t1, data_t2, t1_s1, t2_s1,
         i = 0,
         width  = 400, // 600
         height = 400,
         radius = Math.min(width, height) / 2,
         color  = d3.scale.category10();
+
+    var x = d3.scale.linear()
+        .range([0, 2 * Math.PI]);
+
+    var y = d3.scale.sqrt()
+        .range([0, radius]);
+
+    var color = d3.scale.category20c();
 
     var svg = d3.select("body").append("svg")
       .attr("width", width * 3 + 20 + 20)
@@ -52,97 +64,195 @@
     var svg3 = mastersvg.append("g")
       .attr("transform", "translate(" + (5 * width / 2 + 30) + "," + (height / 2 + 25) + ")");
 
-    var partition = d3.layout.partition()
+    var partition_s1 = d3.layout.partition()
       .sort(null)
-      .value(function (d) {return 1})
-      .size([2 * Math.PI, radius * radius])
-      .children(children);
+      .value(function (d) {return 1;});
+
+    var partition_t1 = d3.layout.partition()
+      .sort(null)
+      .value(function (d) {return 1;});
+
+    var partition_t2 = d3.layout.partition()
+      .sort(null)
+      .value(function (d) {return 1;});
 
     var arc = d3.svg.arc()
-      .startAngle(function(d) { return d.x; })
-      .endAngle(function(d) { return d.x + d.dx; })
-      .innerRadius(function(d) { return Math.sqrt(d.y); })
-      .outerRadius(function(d) { return Math.sqrt(d.y + d.dy); });
+      .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x))); })
+      .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x + d.dx))); })
+      .innerRadius(function(d) { return Math.max(0, y(d.y)); })
+      .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
 
-    function children(d) {
-      var children = [];
-      if (d[CHILD_PRED])
-        d[CHILD_PRED].forEach(function (d){children.push(data[d.value]);});
-      return children;
+    d3.json("/data/s1.json", function(error, json) {
+      d3.json("/data/t1.json", function(error2, json2) {
+        d3.json("/data/t2.json", function(error3, json3) {
+          d3.csv("/data/t1-s1.csv", function(cw) {
+            d3.csv("/data/t2-s1.csv", function(cw2) {
+              if(error || error2 || error3) throw error;
+              data_s1 = json;
+              data_t1 = json2;
+              data_t2 = json3;
+
+              t1_s1 = cw;
+              t2_s1 = cw2;
+
+              render();
+            });
+          });
+        });
+      });
+    });
+
+    function children(data) {
+      return function (d) {
+        var children = [];
+        if (d[CHILD_PRED]) {
+          d[CHILD_PRED].forEach(function (x){children.push(data[x.value]);});
+        }
+        return children;
+      }
     }
 
     function mouseover(d) {
       if (d.depth != null) text.text(d[DESCR_PRED][0].value);
     }
 
-    function click(d) {
-      console.log("click: " + d[DESCR_PRED][0].value);
-      var buf = d[HIDDEN_CHILD_PRED];
-      d[HIDDEN_CHILD_PRED] = d[CHILD_PRED];
-      d[CHILD_PRED] = buf;
-      render(null, data);
+    function click(path, partition, data) {
+      return function (d) {
+        // remove children of clicked node
+        var buf = d._children;
+        d._children = d.children;
+        d.children = buf;
+
+        // compute the new layout
+        var old_d = {x: d.x, dx: d.dx, y: d.y, dy: d.dy};
+        var new_nodes = partition.nodes(data);
+
+        // update the removed children to have 0 area put occupy the correct position
+        // add the children back into the nodes of the computed layout
+        if (d._children)
+          d._children.forEach(function (node) { walkTree(node, function (x) {
+            x.x = d.x + d.dx / 2.;
+            x.dx = 0;
+            x.y = d.y + d.dy;
+
+            new_nodes.push(x);
+          }); });
+
+        if (d.children)
+          d.children.forEach(function (node) { walkTree(node, function(x) {
+            x.x0 = old_d.x + old_d.dx / 2.;
+            x.dx0 = 0;
+            x.y0 = old_d.y + old_d.dy;
+          })});
+
+        // console.log(new_nodes);
+        // apply transition
+        path
+            .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+            .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
+          .transition()
+            .duration(1000)
+            .attrTween("d", arcTweenData)
+            .attrTween("display", function (d, i) {
+              return d.depth == 0
+                  ? function (t) { return "none"; }
+                  : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
+            });
+      }
+    }
+
+    function collapse(tree) {
+      walkTree(tree, function(d) {
+        // give everyone a color
+        color((d.children ? d : d.parent).name);
+        if (d.depth > 0) {
+          d._children = d.children;
+          d.children  = null;
+        }
+        if (d.depth > 1) {
+          d.dx = 0;
+        }
+      });
     }
 
     function render() {
       // compute layout
-      var nodes = partition.nodes(data[ROOT_NAME]);
-      console.log(nodes);
-      var paths = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
-      paths.enter()
-        .append("path")
+      var nodes, path_t1, path_s1, path_t2;
+
+      nodes = partition_t1.children(children(data_t1)).nodes(data_t1[ROOT_NAME_T1]);
+      collapse(nodes[0]);
+      partition_t1.children(function(d) {return d.children;}).nodes(data_t1[ROOT_NAME_T1]);
+
+      path_t1 = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); })
+        .enter().append("path")
         .attr("d", arc)
-        .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
-        .style("fill", function(d) { return color(d.id); })
+        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
+        .style("fill", function(d) { return color((d.children || d._children ? d : d.parent).id); })
         .style("stroke", "#fff")
         .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
         .on('mouseout',  function(d) { text.text("");})
-        .on('click', click);
+        .each(stash);
+      path_t1.on('click', click(path_t1, partition_t1, data_t1[ROOT_NAME_T1]));
 
-        paths.attr("d", arc);
-        paths.exit().remove();
+      nodes = partition_s1.children(children(data_s1)).nodes(data_s1[ROOT_NAME]);
+      collapse(nodes[0]);
+      partition_s1.children(function(d){return d.children;}).nodes(data_s1[ROOT_NAME]);
 
-        paths = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
-        paths.enter()
-          .append("path")
-          .attr("d", arc)
-          .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
-          .style("fill", function(d) { return color(d.id); })
-          .style("stroke", "#fff")
-          .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
-          .on('mouseout',  function(d) { text.text("");})
-          .on('click', click);
+      path_s1 = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      path_s1.enter().append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
+        .style("fill", function(d) { return color((d.children || d._children ? d : d.parent).id); })
+        .style("stroke", "#fff")
+        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
+        .on('mouseout',  function(d) { text.text("");})
+        .on('click', click(path_s1, partition_s1, data_s1[ROOT_NAME]))
+        .each(stash);
 
-          paths.attr("d", arc);
-          paths.exit().remove();
+      nodes = partition_t2.children(children(data_t2)).nodes(data_t2[ROOT_NAME_T2]);
+      collapse(nodes[0]);
+      partition_t2.children(function(d){return d.children}).nodes(data_t2[ROOT_NAME_T2]);
 
-          paths = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
-          paths.enter()
-            .append("path")
-            .attr("d", arc)
-            .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
-            .style("fill", function(d) { return color(d.id); })
-            .style("stroke", "#fff")
-            .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
-            .on('mouseout',  function(d) { text.text("");})
-            .on('click', click);
-
-            paths.attr("d", arc);
-            paths.exit().remove();
+      path_t2 = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      path_t2.enter().append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
+        .style("fill", function(d) { return color((d.children || d._children ? d : d.parent).id); })
+        .style("stroke", "#fff")
+        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
+        .on('mouseout',  function(d) { text.text("");})
+        .on('click', click(path_t2, partition_t2, data_t2[ROOT_NAME_T2]))
+        .each(stash);
     }
-    d3.json("/data/s1.json", function(error, json) {
-      if(error) throw error;
-      data = json;
-      function minimize(d) {
-        children(d).forEach(minimize);
-        console.log(d);
-        d[HIDDEN_CHILD_PRED] = d[CHILD_PRED];
-        d[CHILD_PRED] = null;
+
+    // Utility function
+    function walkTree(d, f) {
+      if (d.children)
+        d.children.forEach(function (x) { walkTree(x, f); });
+      f(d);
+    }
+
+    // Setup for switching data: stash the old values for transition.
+    function stash(d) {
+      d.x0  = d.x;
+      d.dx0 = d.dx;
+      d.y0  = d.y;
+      d.dy0 = d.dy;
+    }
+
+    // When switching data: interpolate the arcs in data space.
+    function arcTweenData(a, i) {
+      var oi = d3.interpolate({x: a.x0, dx: a.dx0, y: a.y0, dy: a.dy0}, a);
+
+      return function (t) {
+        var b = oi(t);
+        a.x0  = b.x;
+        a.dx0 = b.dx;
+        a.y0  = b.y;
+        a.dy0 = b.dy;
+        return arc(b);
       }
-
-      // children(data[ROOT_NAME]).forEach(minimize);
-      render();
-    });
-
+    }
   </script>
 </body>
 </html>
