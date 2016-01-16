@@ -10,10 +10,34 @@
   <title>Sunburst</title>
 </head>
 <body>
+  <div id="infobox">
+    <div id="title">
+      <h1>Common Core Standard Alignment Tool</h1>
+    </div>
+    <div id="standard">
+      <div class="label">Standard</div> <div class="updateable">Here</div>
+    </div>
+    <div id="cw1">
+      <div class="label">CW1</div> <div class="updateable">Here</div>
+    </div>
+    <div id="cw2">
+      <div class="label">CW2</div> <div class="updateable">Here</div>
+    </div>
+  </div>
   <style>
+    h1 {
+      margin-bottom: 0;
+    }
     body {
       text-align:center;
     }
+    #infobox div {
+      margin: 2px;
+    }
+    .label {
+      font-weight: bold;
+    }
+    .updateable { min-height: 36px; }
     path:hover {
       opacity: .5;
     }
@@ -45,24 +69,23 @@
 
     var svg = d3.select("body").append("svg")
       .attr("width", width * 3 + 20 + 20)
-      .attr("height", 600)
+      .attr("height", height + 20)
       .attr("margin", "0 auto");
 
-    var text = svg.append("g")
-      .attr("transform", "translate(0, 20)")
-      .append("text")
-      .attr("id", "text");
+    var text = d3.select("#standard").select(".updateable");
+    var crosswalk1 = d3.select("#cw1").select(".updateable");
+    var crosswalk2 = d3.select("#cw2").select(".updateable");
 
     var mastersvg = svg;
 
     svg = svg.append("g")
-      .attr("transform", "translate(" + (width / 2 + 10) + "," + (height / 2 + 25) + ")");
+      .attr("transform", "translate(" + (width / 2 + 10) + "," + (height / 2 + 10) + ")");
 
     var svg2 = mastersvg.append("g")
-      .attr("transform", "translate(" + (3 * width / 2 + 20) + "," + (height / 2 + 25) + ")");
+      .attr("transform", "translate(" + (3 * width / 2 + 20) + "," + (height / 2 + 10) + ")");
 
     var svg3 = mastersvg.append("g")
-      .attr("transform", "translate(" + (5 * width / 2 + 30) + "," + (height / 2 + 25) + ")");
+      .attr("transform", "translate(" + (5 * width / 2 + 30) + "," + (height / 2 + 10) + ")");
 
     var partition_s1 = d3.layout.partition()
       .sort(null)
