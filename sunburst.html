@@ -199,21 +199,23 @@
       }
     }
 
-    function collapse(tree) {
+    function collapse(tree, depth) {
+      // this code will minimize every node
       walkTree(tree, function(d) {
-        // give everyone a color
-        color((d.children ? d : d.parent).name);
-        if (d.depth > 0) {
+        if (d.depth == depth) {
           d._children = d.children;
           d.children  = null;
         }
-        if (d.depth > 1) {
+        if (d.depth > depth) {
           d.dx = 0;
         }
       });
     }
+
     function id(d) { return d[ID_PRED] ? d[ID_PRED][0].value.slice(-8) : ""; }
+
     function getColor(d) { return color((d.children || d._children ? d : d.parent).id); }
+    
     function render() {
       // compute layout
       var nodes, path_t1, path_s1, path_t2;
@@ -221,7 +223,7 @@
 
 
       nodes = partition_t1.children(children(data_t1)).nodes(data_t1[ROOT_NAME_T1]);
-      collapse(nodes[0]);
+      collapse(nodes[0], 2);
       partition_t1.children(function(d) {return d.children;}).nodes(data_t1[ROOT_NAME_T1]);
 
       path_t1 = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); })
@@ -236,7 +238,7 @@
       path_t1.on('click', click(path_t1, partition_t1, data_t1[ROOT_NAME_T1]));
 
       nodes = partition_s1.children(children(data_s1)).nodes(data_s1[ROOT_NAME]);
-      collapse(nodes[0]);
+      collapse(nodes[0], 1);
       partition_s1.children(function(d){return d.children;}).nodes(data_s1[ROOT_NAME]);
 
       path_s1 = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
@@ -251,7 +253,7 @@
         .each(stash);
 
       nodes = partition_t2.children(children(data_t2)).nodes(data_t2[ROOT_NAME_T2]);
-      collapse(nodes[0]);
+      collapse(nodes[0], 1);
       partition_t2.children(function(d){return d.children}).nodes(data_t2[ROOT_NAME_T2]);
 
       path_t2 = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
