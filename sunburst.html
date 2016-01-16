@@ -21,6 +21,7 @@
   <script src="http://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
   <script>
     var CHILD_PRED = "http://purl.org/gem/qualifiers/hasChild";
+    var ID_PRED = "http://purl.org/ASN/schema/core/identifier";
     var HIDDEN_CHILD_PRED = "_http://purl.org/gem/qualifiers/hasChild";
     var DESCR_PRED = "http://purl.org/dc/terms/description";
     var ROOT_NAME = "http://asn.jesandco.org/resources/D10003FB";
@@ -32,8 +33,7 @@
         i = 0,
         width  = 400, // 600
         height = 400,
-        radius = Math.min(width, height) / 2,
-        color  = d3.scale.category10();
+        radius = Math.min(width, height) / 2;
 
     var x = d3.scale.linear()
         .range([0, 2 * Math.PI]);
@@ -92,8 +92,22 @@
               data_t1 = json2;
               data_t2 = json3;
 
-              t1_s1 = cw;
-              t2_s1 = cw2;
+
+
+              var map = {};
+
+              cw.forEach(function(d) {
+                map[d[TARGET_URI].slice(-8)] = d[SUBJECT_URI].slice(-8);
+                map[d[SUBJECT_URI].slice(-8)] = d[TARGET_URI].slice(-8);
+              });
+              t1_s1 = map;
+
+              map = {};
+              cw2.forEach(function(d) {
+                map[d[TARGET_URI].slice(-8)] = d[SUBJECT_URI].slice(-8);
+                map[d[SUBJECT_URI].slice(-8)] = d[TARGET_URI].slice(-8);
+              });
+              t2_s1 = map;
 
               render();
             });
@@ -136,14 +150,14 @@
             x.y = d.y + d.dy;
 
             new_nodes.push(x);
-          }); });
+          });});
 
         if (d.children)
           d.children.forEach(function (node) { walkTree(node, function(x) {
             x.x0 = old_d.x + old_d.dx / 2.;
             x.dx0 = 0;
             x.y0 = old_d.y + old_d.dy;
-          })});
+          });});
 
         // console.log(new_nodes);
         // apply transition
@@ -175,10 +189,13 @@
         }
       });
     }
-
+    function id(d) { return d[ID_PRED] ? d[ID_PRED][0].value.slice(-8) : ""; }
+    function getColor(d) { return color((d.children || d._children ? d : d.parent).id); }
     function render() {
       // compute layout
       var nodes, path_t1, path_s1, path_t2;
+
+
 
       nodes = partition_t1.children(children(data_t1)).nodes(data_t1[ROOT_NAME_T1]);
       collapse(nodes[0]);
@@ -188,8 +205,8 @@
         .enter().append("path")
         .attr("d", arc)
         .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
-        .style("fill", function(d) { return color((d.children || d._children ? d : d.parent).id); })
-        .style("stroke", "#fff")
+        .attr("fill", function(d) { return id(d) in t1_s1 ? "#DB18DB" : getColor(d); })
+        .attr("stroke", "#fff")
         .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
         .on('mouseout',  function(d) { text.text("");})
         .each(stash);
@@ -203,7 +220,7 @@
       path_s1.enter().append("path")
         .attr("d", arc)
         .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
-        .style("fill", function(d) { return color((d.children || d._children ? d : d.parent).id); })
+        .style("fill", function(d) { return id(d) in t1_s1 || id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
         .style("stroke", "#fff")
         .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
         .on('mouseout',  function(d) { text.text("");})
@@ -218,7 +235,7 @@
       path_t2.enter().append("path")
         .attr("d", arc)
         .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
-        .style("fill", function(d) { return color((d.children || d._children ? d : d.parent).id); })
+        .style("fill", function(d) { return id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
         .style("stroke", "#fff")
         .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
         .on('mouseout',  function(d) { text.text("");})
