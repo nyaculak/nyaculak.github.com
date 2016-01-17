@@ -44,60 +44,40 @@
   </style>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
   <script>
-    var CHILD_PRED = "http://purl.org/gem/qualifiers/hasChild";
-    var ID_PRED = "http://purl.org/ASN/schema/core/identifier";
-    var HIDDEN_CHILD_PRED = "_http://purl.org/gem/qualifiers/hasChild";
-    var DESCR_PRED = "http://purl.org/dc/terms/description";
-    var ROOT_NAME = "http://asn.jesandco.org/resources/D10003FB";
-    var ROOT_NAME_T1 = "http://asn.jesandco.org/resources/D10003B9";
-    var ROOT_NAME_T2 = "http://asn.jesandco.org/resources/D100029D";
-    var TARGET_URI = "subjectURI";
-    var SUBJECT_URI = "objectURI";
-    var data_s1, data_t1, data_t2, t1_s1, t2_s1,
+    var CHILD_PRED = "http://purl.org/gem/qualifiers/hasChild",
+        ID_PRED = "http://purl.org/ASN/schema/core/identifier",
+        HIDDEN_CHILD_PRED = "_http://purl.org/gem/qualifiers/hasChild",
+        DESCR_PRED = "http://purl.org/dc/terms/description",
+        ROOT_NAME = "http://asn.jesandco.org/resources/D10003FB",
+        ROOT_NAME_T1 = "http://asn.jesandco.org/resources/D10003B9",
+        ROOT_NAME_T2 = "http://asn.jesandco.org/resources/D100029D",
+        TARGET_URI = "subjectURI",
+        SUBJECT_URI = "objectURI";
+
+    var t1_s1, t2_s1,
         i = 0,
         width  = 400, // 600
         height = 400,
         radius = Math.min(width, height) / 2;
 
-    var x = d3.scale.linear()
-        .range([0, 2 * Math.PI]);
+    var x = d3.scale.linear().range([0, 2 * Math.PI]),
+        y = d3.scale.sqrt().range([0, radius]);
 
-    var y = d3.scale.sqrt()
-        .range([0, radius]);
+    var text = d3.select("#standard").select(".updateable"),
+        crosswalk1 = d3.select("#cw1").select(".updateable"),
+        crosswalk2 = d3.select("#cw2").select(".updateable");
 
-    var color = d3.scale.category20c();
-
-    var svg = d3.select("body").append("svg")
+    var mastersvg = d3.select("body").append("svg")
       .attr("width", width * 3 + 20 + 20)
       .attr("height", height + 20)
       .attr("margin", "0 auto");
 
-    var text = d3.select("#standard").select(".updateable");
-    var crosswalk1 = d3.select("#cw1").select(".updateable");
-    var crosswalk2 = d3.select("#cw2").select(".updateable");
-
-    var mastersvg = svg;
-
-    svg = svg.append("g")
-      .attr("transform", "translate(" + (width / 2 + 10) + "," + (height / 2 + 10) + ")");
-
-    var svg2 = mastersvg.append("g")
-      .attr("transform", "translate(" + (3 * width / 2 + 20) + "," + (height / 2 + 10) + ")");
-
-    var svg3 = mastersvg.append("g")
-      .attr("transform", "translate(" + (5 * width / 2 + 30) + "," + (height / 2 + 10) + ")");
-
-    var partition_s1 = d3.layout.partition()
-      .sort(null)
-      .value(function (d) {return 1;});
-
-    var partition_t1 = d3.layout.partition()
-      .sort(null)
-      .value(function (d) {return 1;});
-
-    var partition_t2 = d3.layout.partition()
-      .sort(null)
-      .value(function (d) {return 1;});
+    var svg = mastersvg.append("g")
+          .attr("transform", "translate(" + (width / 2 + 10) + "," + (height / 2 + 10) + ")"),
+        svg2 = mastersvg.append("g")
+          .attr("transform", "translate(" + (3 * width / 2 + 20) + "," + (height / 2 + 10) + ")"),
+        svg3 = mastersvg.append("g")
+          .attr("transform", "translate(" + (5 * width / 2 + 30) + "," + (height / 2 + 10) + ")");
 
     var arc = d3.svg.arc()
       .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x))); })
@@ -105,17 +85,28 @@
       .innerRadius(function(d) { return Math.max(0, y(d.y)); })
       .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
 
+    var sunburst_s1 = { "partition" : d3.layout.partition().sort(null).value(function(d) {return 1;}),
+                        "data"      : null,
+                        "root"      : null,
+                        "paths"     : null },
+        sunburst_t1 = { "partition" : d3.layout.partition().sort(null).value(function(d) {return 1;}),
+                        "data"      : null,
+                        "root"      : null,
+                        "paths"     : null },
+        sunburst_t2 = { "partition" : d3.layout.partition().sort(null).value(function(d) {return 1;}),
+                        "data"      : null,
+                        "root"      : null,
+                        "paths"     : null };
+
     d3.json("/data/s1.json", function(error, json) {
       d3.json("/data/t1.json", function(error2, json2) {
         d3.json("/data/t2.json", function(error3, json3) {
           d3.csv("/data/t1-s1.csv", function(cw) {
             d3.csv("/data/t2-s1.csv", function(cw2) {
               if(error || error2 || error3) throw error;
-              data_s1 = json;
-              data_t1 = json2;
-              data_t2 = json3;
-
-
+              sunburst_s1.data = json;  sunburst_s1.root = json[ROOT_NAME];
+              sunburst_t1.data = json2; sunburst_t1.root = json2[ROOT_NAME_T1];
+              sunburst_t2.data = json3; sunburst_t2.root = json3[ROOT_NAME_T2];
 
               var map = {};
 
@@ -139,21 +130,7 @@
       });
     });
 
-    function children(data) {
-      return function (d) {
-        var children = [];
-        if (d[CHILD_PRED]) {
-          d[CHILD_PRED].forEach(function (x){children.push(data[x.value]);});
-        }
-        return children;
-      }
-    }
-
-    function mouseover(d) {
-      if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-    }
-
-    function click(path, partition, data) {
+    function toggle(sunburst) {
       return function (d) {
         // remove children of clicked node
         var buf = d._children;
@@ -162,7 +139,7 @@
 
         // compute the new layout
         var old_d = {x: d.x, dx: d.dx, y: d.y, dy: d.dy};
-        var new_nodes = partition.nodes(data);
+        var new_nodes = sunburst.partition.nodes(sunburst.root);
 
         // update the removed children to have 0 area put occupy the correct position
         // add the children back into the nodes of the computed layout
@@ -182,9 +159,8 @@
             x.y0 = old_d.y + old_d.dy;
           });});
 
-        // console.log(new_nodes);
         // apply transition
-        path
+        sunburst.paths
             .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
             .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
           .transition()
@@ -199,8 +175,110 @@
       }
     }
 
+    function findPathTo(root, node_id, path) {
+      if (id(root) === node_id){
+        path.unshift(root);
+        return true;
+      }
+
+      if (root.children) {
+        for (i in root.children)
+          if (findPathTo(root.children[i], node_id, path)) {
+            path.unshift(root);
+            return true;
+          }
+
+      } else if (root._children) {
+        for(i in root._children) {
+          if (findPathTo(root._children[i], node_id, path)) {
+              path.unshift(root);
+              return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    function showCrosswalk(sunburst) {
+      return function (node_id) {
+        var nodes = [];
+        var index = null;
+        findPathTo(sunburst.root, node_id, nodes);
+
+        for (i in nodes) {
+          if (nodes[i]._children) {
+            if (!index) index = i;
+            else {
+              nodes[i].children = nodes[i]._children;
+              nodes[i]._children = null;
+            }
+          }
+        }
+
+        toggle(sunburst)(nodes[index]);
+        sunburst.path.style("opacity", 0.1);
+        sunburst.path.data(nodes, function(d) { return d.id || (d.id = ++i); }).style("opacity", 1);
+      }
+    }
+
+    function render() {
+      var nodes,
+          color = d3.scale.category20c();
+
+      function getColor(d) {
+        return color((d.children || d._children ? d : d.parent).id);
+      }
+
+      nodes = sunburst_t1.partition.children(children(sunburst_t1)).nodes(sunburst_t1.root);
+      collapse(nodes[0], 2);
+      sunburst_t1.partition.children(function(d) {return d.children;}).nodes(sunburst_t1.root);
+
+      sunburst_t1.paths = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      sunburst_t1.paths.enter().append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
+        .attr("fill", function(d) { return id(d) in t1_s1 ? "#DB18DB" : getColor(d); })
+        .attr("stroke", "#fff")
+        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
+        .on('mouseout',  function(d) { text.text("");})
+        .on('click', toggle(sunburst_t1))
+        .each(stash);
+
+      nodes = sunburst_s1.partition.children(children(sunburst_s1)).nodes(sunburst_s1.root);
+      collapse(nodes[0], 1);
+      sunburst_s1.partition.children(function(d){return d.children;}).nodes(sunburst_s1.root);
+
+      sunburst_s1.paths = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      sunburst_s1.paths.enter().append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
+        .style("fill", function(d) { return id(d) in t1_s1 || id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
+        .style("stroke", "#fff")
+        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
+        .on('mouseout',  function(d) { text.text("");})
+        .on('click', toggle(sunburst_s1))
+        .each(stash);
+
+      nodes = sunburst_t2.partition.children(children(sunburst_t2)).nodes(sunburst_t2.root);
+      collapse(nodes[0], 1);
+      sunburst_t2.partition.children(function(d){return d.children}).nodes(sunburst_t2.root);
+
+      sunburst_t2.paths = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      sunburst_t2.paths.enter().append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
+        .style("fill", function(d) { return id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
+        .style("stroke", "#fff")
+        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
+        .on('mouseout',  function(d) { text.text("");})
+        .on('click', toggle(sunburst_t2))
+        .each(stash);
+    }
+
+    // Helper functions ////////////////////////////////////////////////////////
+    // minimizes all the nodes at the specified depth
     function collapse(tree, depth) {
-      // this code will minimize every node
       walkTree(tree, function(d) {
         if (d.depth == depth) {
           d._children = d.children;
@@ -214,68 +292,25 @@
 
     function id(d) { return d[ID_PRED] ? d[ID_PRED][0].value.slice(-8) : ""; }
 
-    function getColor(d) { return color((d.children || d._children ? d : d.parent).id); }
-    
-    function render() {
-      // compute layout
-      var nodes, path_t1, path_s1, path_t2;
-
-
-
-      nodes = partition_t1.children(children(data_t1)).nodes(data_t1[ROOT_NAME_T1]);
-      collapse(nodes[0], 2);
-      partition_t1.children(function(d) {return d.children;}).nodes(data_t1[ROOT_NAME_T1]);
-
-      path_t1 = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); })
-        .enter().append("path")
-        .attr("d", arc)
-        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
-        .attr("fill", function(d) { return id(d) in t1_s1 ? "#DB18DB" : getColor(d); })
-        .attr("stroke", "#fff")
-        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
-        .on('mouseout',  function(d) { text.text("");})
-        .each(stash);
-      path_t1.on('click', click(path_t1, partition_t1, data_t1[ROOT_NAME_T1]));
-
-      nodes = partition_s1.children(children(data_s1)).nodes(data_s1[ROOT_NAME]);
-      collapse(nodes[0], 1);
-      partition_s1.children(function(d){return d.children;}).nodes(data_s1[ROOT_NAME]);
-
-      path_s1 = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
-      path_s1.enter().append("path")
-        .attr("d", arc)
-        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
-        .style("fill", function(d) { return id(d) in t1_s1 || id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
-        .style("stroke", "#fff")
-        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
-        .on('mouseout',  function(d) { text.text("");})
-        .on('click', click(path_s1, partition_s1, data_s1[ROOT_NAME]))
-        .each(stash);
-
-      nodes = partition_t2.children(children(data_t2)).nodes(data_t2[ROOT_NAME_T2]);
-      collapse(nodes[0], 1);
-      partition_t2.children(function(d){return d.children}).nodes(data_t2[ROOT_NAME_T2]);
-
-      path_t2 = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
-      path_t2.enter().append("path")
-        .attr("d", arc)
-        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
-        .style("fill", function(d) { return id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
-        .style("stroke", "#fff")
-        .on('mouseover', function(d) { if (d.depth != null) text.text(d[DESCR_PRED][0].value); })
-        .on('mouseout',  function(d) { text.text("");})
-        .on('click', click(path_t2, partition_t2, data_t2[ROOT_NAME_T2]))
-        .each(stash);
+    // specifies how to retrieve children from the json
+    function children(sunburst) {
+      return function (d) {
+        var children = [];
+        if (d[CHILD_PRED]) {
+          d[CHILD_PRED].forEach(function (x){children.push(sunburst.data[x.value]);});
+        }
+        return children;
+      }
     }
 
-    // Utility function
+    // applies a function to the entire tree
     function walkTree(d, f) {
       if (d.children)
         d.children.forEach(function (x) { walkTree(x, f); });
       f(d);
     }
 
-    // Setup for switching data: stash the old values for transition.
+    // setup for switching data: stash the old values for transition.
     function stash(d) {
       d.x0  = d.x;
       d.dx0 = d.dx;
@@ -283,7 +318,7 @@
       d.dy0 = d.dy;
     }
 
-    // When switching data: interpolate the arcs in data space.
+    // interpolate the arcs in data space for the transitions
     function arcTweenData(a, i) {
       var oi = d3.interpolate({x: a.x0, dx: a.dx0, y: a.y0, dy: a.dy0}, a);
 
