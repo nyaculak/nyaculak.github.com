@@ -111,15 +111,35 @@
               var map = {};
 
               cw.forEach(function(d) {
-                map[d[TARGET_URI].slice(-8)]  = sunburst_s1.data[d[SUBJECT_URI]];
-                map[d[SUBJECT_URI].slice(-8)] = sunburst_t1.data[d[TARGET_URI]];
+                if(map[d[TARGET_URI].slice(-8)]) {
+                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
+                } else {
+                  map[d[TARGET_URI].slice(-8)] = [];
+                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
+                }
+                if(map[d[SUBJECT_URI].slice(-8)]) {
+                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t1.data[d[TARGET_URI]]);
+                } else {
+                  map[d[SUBJECT_URI].slice(-8)] = [];
+                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t1.data[d[TARGET_URI]]);
+                }
               });
               t1_s1 = map;
 
               map = {};
               cw2.forEach(function(d) {
-                map[d[TARGET_URI].slice(-8)]  = sunburst_s1.data[d[SUBJECT_URI]];
-                map[d[SUBJECT_URI].slice(-8)] = sunburst_t2.data[d[TARGET_URI]];
+                if(map[d[TARGET_URI].slice(-8)]) {
+                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
+                } else {
+                  map[d[TARGET_URI].slice(-8)] = [];
+                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
+                }
+                if(map[d[SUBJECT_URI].slice(-8)]) {
+                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t2.data[d[TARGET_URI]]);
+                } else {
+                  map[d[SUBJECT_URI].slice(-8)] = [];
+                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t2.data[d[TARGET_URI]]);
+                }
               });
               t2_s1 = map;
 
@@ -229,6 +249,11 @@
                 : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
           });
     }
+    function hideCrosswalks(sunburst, data) {
+      for(i = 0; i < data.length; i++) {
+        hideCrosswalk(sunburst, data[i]);
+      }
+    }
     var timeout_ids = [];
     function showCrosswalk(sunburst, d) {
       timeout_ids.push(setTimeout(function() {
@@ -288,6 +313,11 @@
 
       }, 500));
     }
+    function showCrosswalks(sunburst, data) {
+      for(i = 0; i < data.length; i++) {
+        showCrosswalk(sunburst, data[i]);
+      }
+    }
 
     function render() {
       var nodes,
@@ -309,9 +339,9 @@
         .attr("stroke", "#fff")
         .on('mouseover', function(d) {
           if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-          if (id(d) in t1_s1) showCrosswalk(sunburst_s1, t1_s1[id(d)]);
+          if (id(d) in t1_s1) showCrosswalks(sunburst_s1, t1_s1[id(d)]);
         })
-        .on('mouseout',  function(d) {if (id(d) in t1_s1) hideCrosswalk(sunburst_s1, t1_s1[id(d)]);})
+        .on('mouseout',  function(d) {if (id(d) in t1_s1) hideCrosswalks(sunburst_s1, t1_s1[id(d)]);})
         .on('click', toggle(sunburst_t1))
         .each(stash);
 
@@ -327,13 +357,13 @@
         .style("stroke", "#fff")
         .on('mouseover', function(d) {
           if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-          if (id(d) in t1_s1) showCrosswalk(sunburst_t1, t1_s1[id(d)]);
-          if (id(d) in t2_s1) showCrosswalk(sunburst_t2, t2_s1[id(d)]);
+          if (id(d) in t1_s1) showCrosswalks(sunburst_t1, t1_s1[id(d)]);
+          if (id(d) in t2_s1) showCrosswalks(sunburst_t2, t2_s1[id(d)]);
         })
         .on('mouseout',  function(d) {
           text.text("");
-          if (id(d) in t1_s1) hideCrosswalk(sunburst_t1, t1_s1[id(d)]);
-          if (id(d) in t2_s1) hideCrosswalk(sunburst_t2, t2_s1[id(d)]);
+          if (id(d) in t1_s1) hideCrosswalks(sunburst_t1, t1_s1[id(d)]);
+          if (id(d) in t2_s1) hideCrosswalks(sunburst_t2, t2_s1[id(d)]);
         })
         .on('click', toggle(sunburst_s1))
         .each(stash);
@@ -350,11 +380,11 @@
         .style("stroke", "#fff")
         .on('mouseover', function(d) {
           if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-          if (id(d) in t2_s1) showCrosswalk(sunburst_s1, t2_s1[id(d)]);
+          if (id(d) in t2_s1) showCrosswalks(sunburst_s1, t2_s1[id(d)]);
         })
         .on('mouseout',  function(d) {
           text.text("");
-          if (id(d) in t2_s1) hideCrosswalk(sunburst_s1, t2_s1[id(d)]);
+          if (id(d) in t2_s1) hideCrosswalks(sunburst_s1, t2_s1[id(d)]);
         })
         .on('click', toggle(sunburst_t2))
         .each(stash);
