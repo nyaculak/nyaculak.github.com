@@ -17,11 +17,11 @@
     <div id="standard">
       <div class="label">Standard</div> <div class="updateable">Here</div>
     </div>
-    <div id="cw1">
-      <div class="label">CW1</div> <div class="updateable">Here</div>
+    <div id="crosswalk">
+      <div class="label">Crosswalk</div> <div class="updateable">Here</div>
     </div>
-    <div id="cw2">
-      <div class="label">CW2</div> <div class="updateable">Here</div>
+    <div id="directions">
+      <div class="label">Directions</div> <div class="updateable">Here</div>
     </div>
   </div>
   <style>
@@ -64,8 +64,7 @@
         y = d3.scale.sqrt().range([0, radius]);
 
     var text = d3.select("#standard").select(".updateable"),
-        crosswalk1 = d3.select("#cw1").select(".updateable"),
-        crosswalk2 = d3.select("#cw2").select(".updateable");
+        crosswalk = d3.select("#crosswalk").select(".updateable");
 
     var mastersvg = d3.select("body").append("svg")
       .attr("width", width * 3 + 20 + 20)
@@ -190,12 +189,14 @@
 
     function toggle(sunburst) {
       return function (d) {
-        // remove children of clicked node
-        var buf = d._children;
-        d._children = d.children;
-        d.children = buf;
+        if(!isCrosswalkLocked) {
+          // remove children of clicked node
+          var buf = d._children;
+          d._children = d.children;
+          d.children = buf;
 
-        transition(sunburst, d);
+          transition(sunburst, d);
+        }
       }
     }
 
@@ -319,6 +320,10 @@
       }
     }
 
+    var isCrosswalkLocked = false;
+    var justCanceledLock = false;
+    var lockedID = "";
+
     function render() {
       var nodes,
           color = d3.scale.category20c();
@@ -338,14 +343,33 @@
         .attr("fill", function(d) { return id(d) in t1_s1 ? "#DB18DB" : getColor(d); })
         .attr("stroke", "#fff")
         .on('mouseover', function(d) {
-          if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-          if (id(d) in t1_s1) showCrosswalks(sunburst_s1, t1_s1[id(d)]);
+          if (d.depth != null) {
+            if(isCrosswalkLocked) crosswalk.text(d[DESCR_PRED][0].value);
+            else text.text(d[DESCR_PRED][0].value);
+          }
+          if (id(d) in t1_s1 && !isCrosswalkLocked) showCrosswalks(sunburst_s1, t1_s1[id(d)]);
         })
-        .on('mouseout',  function(d) {if (id(d) in t1_s1) hideCrosswalks(sunburst_s1, t1_s1[id(d)]);})
+        .on('mouseout',  function(d) {
+          if(!isCrosswalkLocked) text.text("");
+          crosswalk.text("");
+          if(justCanceledLock) {
+            hideCrosswalks(sunburst_s1, t1_s1[lockedID]);
+            justCanceledLock = false;
+          } else if(id(d) in t1_s1 && !isCrosswalkLocked) {
+            hideCrosswalks(sunburst_s1, t1_s1[id(d)]);
+          }
+        })
         .on('click', toggle(sunburst_t1))
         .on('contextmenu', function(d) {
           d3.event.preventDefault();
-          if (d.depth != null) alert("right click registered");
+          if(isCrosswalkLocked) {
+            isCrosswalkLocked = false;
+            justCanceledLock = true;
+          }
+          else if (id(d) in t1_s1 && !isCrosswalkLocked) {
+            isCrosswalkLocked = true;
+            lockedID = id(d);
+          }
         })
         .each(stash);
 
@@ -360,16 +384,37 @@
         .style("fill", function(d) { return id(d) in t1_s1 || id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
         .style("stroke", "#fff")
         .on('mouseover', function(d) {
-          if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-          if (id(d) in t1_s1) showCrosswalks(sunburst_t1, t1_s1[id(d)]);
-          if (id(d) in t2_s1) showCrosswalks(sunburst_t2, t2_s1[id(d)]);
+          if (d.depth != null) {
+            if(isCrosswalkLocked) crosswalk.text(d[DESCR_PRED][0].value);
+            else text.text(d[DESCR_PRED][0].value);
+          }
+          if (id(d) in t1_s1 && !isCrosswalkLocked) showCrosswalks(sunburst_t1, t1_s1[id(d)]);
+          if (id(d) in t2_s1 && !isCrosswalkLocked) showCrosswalks(sunburst_t2, t2_s1[id(d)]);
         })
         .on('mouseout',  function(d) {
-          text.text("");
-          if (id(d) in t1_s1) hideCrosswalks(sunburst_t1, t1_s1[id(d)]);
-          if (id(d) in t2_s1) hideCrosswalks(sunburst_t2, t2_s1[id(d)]);
+          if(!isCrosswalkLocked) text.text("");
+          crosswalk.text("");
+          if(justCanceledLock) {
+            hideCrosswalks(sunburst_t1, t1_s1[lockedID]);
+            hideCrosswalks(sunburst_t2, t2_s1[lockedID]);
+            justCanceledLock = false;
+          } else {
+            if (id(d) in t1_s1 && !isCrosswalkLocked) hideCrosswalks(sunburst_t1, t1_s1[id(d)]);
+            if (id(d) in t2_s1 && !isCrosswalkLocked) hideCrosswalks(sunburst_t2, t2_s1[id(d)]);
+          }
         })
         .on('click', toggle(sunburst_s1))
+        .on('contextmenu', function(d) {
+          d3.event.preventDefault();
+          if(isCrosswalkLocked) {
+            isCrosswalkLocked = false;
+            justCanceledLock = true;
+          }
+          else if ( (id(d) in t1_s1 || id(d) in t2_s1) && !isCrosswalkLocked) {
+            isCrosswalkLocked = true;
+            lockedID = id(d);
+          }
+        })
         .each(stash);
 
       nodes = sunburst_t2.partition.children(children(sunburst_t2)).nodes(sunburst_t2.root);
@@ -383,14 +428,34 @@
         .style("fill", function(d) { return id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
         .style("stroke", "#fff")
         .on('mouseover', function(d) {
-          if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-          if (id(d) in t2_s1) showCrosswalks(sunburst_s1, t2_s1[id(d)]);
+          if (d.depth != null) {
+            if(isCrosswalkLocked) crosswalk.text(d[DESCR_PRED][0].value);
+            else text.text(d[DESCR_PRED][0].value);
+          }
+          if (id(d) in t2_s1 && !isCrosswalkLocked) showCrosswalks(sunburst_s1, t2_s1[id(d)]);
         })
         .on('mouseout',  function(d) {
-          text.text("");
-          if (id(d) in t2_s1) hideCrosswalks(sunburst_s1, t2_s1[id(d)]);
+          if(!isCrosswalkLocked) text.text("");
+          crosswalk.text("");
+          if(justCanceledLock) {
+            hideCrosswalks(sunburst_s1, t2_s1[lockedID]);
+            justCanceledLock = false;
+          } else if(id(d) in t2_s1 && !isCrosswalkLocked) {
+            hideCrosswalks(sunburst_s1, t2_s1[id(d)]);
+          }
         })
         .on('click', toggle(sunburst_t2))
+        .on('contextmenu', function(d) {
+          d3.event.preventDefault();
+          if(isCrosswalkLocked) {
+            isCrosswalkLocked = false;
+            justCanceledLock = true;
+          }
+          else if (id(d) in t2_s1 && !isCrosswalkLocked) {
+            isCrosswalkLocked = true;
+            lockedID = id(d);
+          }
+        })
         .each(stash);
     }
 
