@@ -343,6 +343,10 @@
         })
         .on('mouseout',  function(d) {if (id(d) in t1_s1) hideCrosswalks(sunburst_s1, t1_s1[id(d)]);})
         .on('click', toggle(sunburst_t1))
+        .on('contextmenu', function(d) {
+          d3.event.preventDefault();
+          if (d.depth != null) alert("right click registered");
+        })
         .each(stash);
 
       nodes = sunburst_s1.partition.children(children(sunburst_s1)).nodes(sunburst_s1.root);
