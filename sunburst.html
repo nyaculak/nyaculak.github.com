@@ -200,36 +200,51 @@
     }
 
 
-    function hideCrosswalk(sunburst, d) {
+    function hideCrosswalk(sunburst, ds) {
+      // cancel any showCrosswalk events
       timeout_ids.forEach(function(d) { clearTimeout(d); });
       timeout_ids = [];
-      var node = d.parent,
-          nodes = [],
-          lowest_marked_node;
 
-      while (node.parent) {
-        if (node.marked) {
+      // key nodes will transition
+      var key_nodes = [];
+
+      // end nodes will disapear at then end of the transistion
+      var end_nodes = [];
+
+      // populate key and end nodes
+      ds.forEach(function(d) {
+        var key_node = null;
+        walkBranch(d, function(node) {
+          if (!node.marked) return;
           node.marked = null;
           node._children = node.children;
           node.children = null;
-          lowest_marked_node = node;
-
-          node._children.forEach(function (node) { walkTree(node, function (x) {
-            nodes.push(x);
-          });});
+          key_node = node;
+        });
+        if(key_node) {
+          var nodes = [];
+          key_node._children.forEach(function(d) { walkTree(d, function(node) {
+            nodes.push(node);
+          })});
+          end_nodes.push(nodes);
+          key_nodes.push(key_node);
         }
-        node = node.parent;
-      }
-
-      var new_nodes = sunburst.partition.nodes(sunburst.root);
-
-      nodes.forEach(function(d) {
-        d.x = lowest_marked_node.x + lowest_marked_node.dx / 2.;
-        d.dx = 0;
-        d.y = lowest_marked_node.y + lowest_marked_node.dy;
       });
 
-      new_nodes = new_nodes.concat(nodes);
+      // recompute the sunburst
+      var new_nodes = sunburst.partition.nodes(sunburst.root);
+
+      // set the end position of end nodes
+      for (i in key_nodes) {
+        end_nodes[i].forEach(function(d) {
+          d.x = key_nodes[i].x + key_nodes[i].dx / 2.;
+          d.dx = 0;
+          d.y = key_nodes[i].y + key_nodes[i].dy;
+        });
+
+        // add the end nodes to the list of nodes that will be transitioned
+        new_nodes = new_nodes.concat(end_nodes[i]);
+      }
 
       sunburst.paths
           .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
@@ -249,47 +264,47 @@
                 : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
           });
     }
-    function hideCrosswalks(sunburst, data) {
-      for(i = 0; i < data.length; i++) {
-        hideCrosswalk(sunburst, data[i]);
-      }
-    }
+
     var timeout_ids = [];
-    function showCrosswalk(sunburst, d) {
+    function showCrosswalk(sunburst, ds) {
       timeout_ids.push(setTimeout(function() {
-        var node = d.parent,
-            nodes = [d],
-            lowest_collapsed_node;
+        // key nodes are the ones that will actually animate
+        var key_nodes = [];
 
-        while (node.parent) {
-          if (node._children) {
-            node.marked = true;
-            node.children = node._children;
-            node._children = null;
-            lowest_collapsed_node = node;
-          }
+        var crosswalks = [];
+        ds.forEach(function(d) {
+          var key_node = null;
+          walkBranch(d, function(node) {
+            if (node._children) {
+              node.marked = true;
+              node.children = node._children;
+              node._children = null;
+              key_node = node;
+            }
+            crosswalks.push(node);
+            node.opacity = 1;
+          });
+          if(key_node) key_nodes.push(key_node);
+        });
+        var key_nodes_clone = [];
 
-          nodes.push(node);
-          node = node.parent;
-        }
+        key_nodes.forEach(function(d) {
+          key_nodes_clone.push({x: d.x, dx: d.dx,
+                                y: d.y, dy: d.dy});
+        });
 
-        var paths = sunburst.paths;
-
-        if (lowest_collapsed_node)
-          var old_d = {x: lowest_collapsed_node.x, dx: lowest_collapsed_node.dx,
-                       y: lowest_collapsed_node.y, dy: lowest_collapsed_node.dy};
-
+        // recompute sunburst
         var new_nodes = sunburst.partition.nodes(sunburst.root);
 
-        if (lowest_collapsed_node) {
-          lowest_collapsed_node.children.forEach(function (node) { walkTree(node, function(x) {
-            x.x0 = old_d.x + old_d.dx / 2.;
-            x.dx0 = 0;
-            x.y0 = old_d.y + old_d.dy;
-          });});
+        // assign starting values
+        for (i in key_nodes) {
+          walkTree(key_nodes[i], function(d) {
+            if (d.depth == key_nodes[i].depth) return;
+            d.x0 = key_nodes_clone[i].x + key_nodes_clone[i].dx / 2.;
+            d.dx0 = 0;
+            d.y0 = key_nodes_clone[i].y + key_nodes_clone[i].dy;
+          });
         }
-
-        nodes.forEach(function(d) {d.opacity = 1;});
 
         sunburst.paths
             .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
@@ -303,7 +318,7 @@
                   ? function (t) { return "none"; }
                   : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
             })
-            .filter(function(d) {return nodes.indexOf(d) < 0})
+            .filter(function(d) {return crosswalks.indexOf(d) < 0})
             .duration(450)
             .ease("cubic-in-out")
             .attrTween("opacity", function(d) {
@@ -312,11 +327,6 @@
             });
 
       }, 500));
-    }
-    function showCrosswalks(sunburst, data) {
-      for(i = 0; i < data.length; i++) {
-        showCrosswalk(sunburst, data[i]);
-      }
     }
 
     function render() {
@@ -339,9 +349,9 @@
         .attr("stroke", "#fff")
         .on('mouseover', function(d) {
           if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-          if (id(d) in t1_s1) showCrosswalks(sunburst_s1, t1_s1[id(d)]);
+          if (id(d) in t1_s1) showCrosswalk(sunburst_s1, t1_s1[id(d)]);
         })
-        .on('mouseout',  function(d) {if (id(d) in t1_s1) hideCrosswalks(sunburst_s1, t1_s1[id(d)]);})
+        .on('mouseout',  function(d) {if (id(d) in t1_s1) hideCrosswalk(sunburst_s1, t1_s1[id(d)]);})
         .on('click', toggle(sunburst_t1))
         .on('contextmenu', function(d) {
           d3.event.preventDefault();
@@ -361,13 +371,13 @@
         .style("stroke", "#fff")
         .on('mouseover', function(d) {
           if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-          if (id(d) in t1_s1) showCrosswalks(sunburst_t1, t1_s1[id(d)]);
-          if (id(d) in t2_s1) showCrosswalks(sunburst_t2, t2_s1[id(d)]);
+          if (id(d) in t1_s1) showCrosswalk(sunburst_t1, t1_s1[id(d)]);
+          if (id(d) in t2_s1) showCrosswalk(sunburst_t2, t2_s1[id(d)]);
         })
         .on('mouseout',  function(d) {
           text.text("");
-          if (id(d) in t1_s1) hideCrosswalks(sunburst_t1, t1_s1[id(d)]);
-          if (id(d) in t2_s1) hideCrosswalks(sunburst_t2, t2_s1[id(d)]);
+          if (id(d) in t1_s1) hideCrosswalk(sunburst_t1, t1_s1[id(d)]);
+          if (id(d) in t2_s1) hideCrosswalk(sunburst_t2, t2_s1[id(d)]);
         })
         .on('click', toggle(sunburst_s1))
         .each(stash);
@@ -384,11 +394,11 @@
         .style("stroke", "#fff")
         .on('mouseover', function(d) {
           if (d.depth != null) text.text(d[DESCR_PRED][0].value);
-          if (id(d) in t2_s1) showCrosswalks(sunburst_s1, t2_s1[id(d)]);
+          if (id(d) in t2_s1) showCrosswalk(sunburst_s1, t2_s1[id(d)]);
         })
         .on('mouseout',  function(d) {
           text.text("");
-          if (id(d) in t2_s1) hideCrosswalks(sunburst_s1, t2_s1[id(d)]);
+          if (id(d) in t2_s1) hideCrosswalk(sunburst_s1, t2_s1[id(d)]);
         })
         .on('click', toggle(sunburst_t2))
         .each(stash);
@@ -426,6 +436,15 @@
       if (d.children)
         d.children.forEach(function (x) { walkTree(x, f); });
       f(d);
+    }
+
+    // similiar to walkTree except walks backwards up the tree
+    function walkBranch(d, f) {
+      var node = d;
+      while (node.parent) {
+        if (f) f(node);
+        node = node.parent;
+      }
     }
 
     // setup for switching data: stash the old values for transition.
