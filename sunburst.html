@@ -54,6 +54,15 @@
         TARGET_URI = "subjectURI",
         SUBJECT_URI = "objectURI";
 
+    var isCrosswalkLocked = false,
+        justCanceledLock = false,
+        lockedID = "",
+        lockedFrom = "";
+
+    var LOCKED_FROM_T1 = "LOCKED.FROM.T1",
+        LOCKED_FROM_S1_BOTH = "LOCKED.FROM.S1.BOTH",
+        LOCKED_FROM_T2 = "LOCKED.FROM.T2";
+
     var t1_s1, t2_s1,
         i = 0,
         width  = 400, // 600
@@ -96,6 +105,8 @@
                         "data"      : null,
                         "root"      : null,
                         "paths"     : null };
+
+    var timeout_ids = [];
 
     d3.json("/data/s1.json", function(error, json) {
       d3.json("/data/t1.json", function(error2, json2) {
@@ -149,44 +160,6 @@
       });
     });
 
-    function transition(sunburst, d) {
-      // compute the new layout
-      var old_d = {x: d.x, dx: d.dx, y: d.y, dy: d.dy};
-      var new_nodes = sunburst.partition.nodes(sunburst.root);
-
-      // update the removed children to have 0 area put occupy the correct position
-      // add the children back into the nodes of the computed layout
-      if (d._children)
-        d._children.forEach(function (node) { walkTree(node, function (x) {
-          x.x = d.x + d.dx / 2.;
-          x.dx = 0;
-          x.y = d.y + d.dy;
-
-          new_nodes.push(x);
-        });});
-
-      if (d.children)
-        d.children.forEach(function (node) { walkTree(node, function(x) {
-          x.x0 = old_d.x + old_d.dx / 2.;
-          x.dx0 = 0;
-          x.y0 = old_d.y + old_d.dy;
-        });});
-
-      // apply transition
-      sunburst.paths
-          .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
-          .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
-        .transition()
-          .duration(450)
-          .ease("cubic-in-out")
-          .attrTween("d", arcTweenData)
-          .attrTween("display", function (d, i) {
-            return d.depth == 0
-                ? function (t) { return "none"; }
-                : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
-          });
-    }
-
     function toggle(sunburst) {
       return function (d) {
         if(!isCrosswalkLocked) {
@@ -195,11 +168,44 @@
           d._children = d.children;
           d.children = buf;
 
-          transition(sunburst, d);
+          // compute the new layout
+          var old_d = {x: d.x, dx: d.dx, y: d.y, dy: d.dy};
+          var new_nodes = sunburst.partition.nodes(sunburst.root);
+
+          // update the removed children to have 0 area put occupy the correct position
+          // add the children back into the nodes of the computed layout
+          if (d._children)
+            d._children.forEach(function (node) { walkTree(node, function (x) {
+              x.x = d.x + d.dx / 2.;
+              x.dx = 0;
+              x.y = d.y + d.dy;
+
+              new_nodes.push(x);
+            });});
+
+          if (d.children)
+            d.children.forEach(function (node) { walkTree(node, function(x) {
+              x.x0 = old_d.x + old_d.dx / 2.;
+              x.dx0 = 0;
+              x.y0 = old_d.y + old_d.dy;
+            });});
+
+          // apply transition
+          sunburst.paths
+              .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+              .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
+            .transition()
+              .duration(450)
+              .ease("cubic-in-out")
+              .attrTween("d", arcTweenData)
+              .attrTween("display", function (d, i) {
+                return d.depth == 0
+                    ? function (t) { return "none"; }
+                    : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
+              });
         }
       }
     }
-
 
     function hideCrosswalk(sunburst, ds) {
       // cancel any showCrosswalk events
@@ -269,7 +275,6 @@
           });
     }
 
-    var timeout_ids = [];
     function showCrosswalk(sunburst, ds) {
       timeout_ids.push(setTimeout(function() {
         // key nodes are the ones that will actually animate
@@ -333,15 +338,6 @@
       }, 500));
     }
 
-    var isCrosswalkLocked = false;
-    var justCanceledLock = false;
-    var lockedID = "";
-    var lockedFrom = "";
-
-    var LOCKED_FROM_T1 = "LOCKED.FROM.T1";
-    var LOCKED_FROM_S1_BOTH = "LOCKED.FROM.S1.BOTH";
-    var LOCKED_FROM_T2 = "LOCKED.FROM.T2";
-
     function hideCWAfterCancel(lockedID, lockedFrom) {
       switch(lockedFrom) {
         case LOCKED_FROM_T1:
@@ -363,10 +359,7 @@
     function render() {
       var nodes,
           color = d3.scale.category20c();
-
-      function getColor(d) {
-        return color((d.children || d._children ? d : d.parent).id);
-      }
+      var getColor = function(d) { return color((d.children || d._children ? d : d.parent).id);};
 
       nodes = sunburst_t1.partition.children(children(sunburst_t1)).nodes(sunburst_t1.root);
       collapse(nodes[0], 2);
