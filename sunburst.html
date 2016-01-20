@@ -333,6 +333,29 @@
     var isCrosswalkLocked = false;
     var justCanceledLock = false;
     var lockedID = "";
+    var lockedFrom = "";
+
+    var LOCKED_FROM_T1 = "LOCKED.FROM.T1";
+    var LOCKED_FROM_S1_BOTH = "LOCKED.FROM.S1.BOTH";
+    var LOCKED_FROM_T2 = "LOCKED.FROM.T2";
+
+    function hideCWAfterCancel(lockedID, lockedFrom) {
+      switch(lockedFrom) {
+        case LOCKED_FROM_T1:
+          console.log("t1");
+          hideCrosswalk(sunburst_s1, t1_s1[lockedID]);
+          break;
+        case LOCKED_FROM_T2:
+          console.log("t2");
+          hideCrosswalk(sunburst_s1, t2_s1[lockedID]);
+          break;
+        case LOCKED_FROM_S1_BOTH:
+          console.log("s1");
+          hideCrosswalk(sunburst_t1, t1_s1[lockedID]);
+          hideCrosswalk(sunburst_t2, t2_s1[lockedID]);
+          break;
+      }
+    }
 
     function render() {
       var nodes,
@@ -363,7 +386,8 @@
           if(!isCrosswalkLocked) text.text("");
           crosswalk.text("");
           if(justCanceledLock) {
-            hideCrosswalk(sunburst_s1, t1_s1[lockedID]);
+            //hideCrosswalk(sunburst_s1, t1_s1[lockedID]);
+            hideCWAfterCancel(lockedID, lockedFrom);
             justCanceledLock = false;
           } else if(id(d) in t1_s1 && !isCrosswalkLocked) {
             hideCrosswalk(sunburst_s1, t1_s1[id(d)]);
@@ -379,6 +403,7 @@
           else if (id(d) in t1_s1 && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
             lockedID = id(d);
+            lockedFrom = LOCKED_FROM_T1;
           }
         })
         .each(stash);
@@ -405,8 +430,9 @@
           if(!isCrosswalkLocked) text.text("");
           crosswalk.text("");
           if(justCanceledLock) {
-            hideCrosswalk(sunburst_t1, t1_s1[lockedID]);
-            hideCrosswalk(sunburst_t2, t2_s1[lockedID]);
+            //hideCrosswalk(sunburst_t1, t1_s1[lockedID]);
+            //hideCrosswalk(sunburst_t2, t2_s1[lockedID]);
+            hideCWAfterCancel(lockedID, lockedFrom);
             justCanceledLock = false;
           } else {
             if (id(d) in t1_s1 && !isCrosswalkLocked) hideCrosswalk(sunburst_t1, t1_s1[id(d)]);
@@ -423,6 +449,7 @@
           else if ( (id(d) in t1_s1 || id(d) in t2_s1) && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
             lockedID = id(d);
+            lockedFrom = LOCKED_FROM_S1_BOTH;
           }
         })
         .each(stash);
@@ -448,7 +475,8 @@
           if(!isCrosswalkLocked) text.text("");
           crosswalk.text("");
           if(justCanceledLock) {
-            hideCrosswalk(sunburst_s1, t2_s1[lockedID]);
+            //hideCrosswalk(sunburst_s1, t2_s1[lockedID]);
+            hideCWAfterCancel(lockedID, lockedFrom);
             justCanceledLock = false;
           } else if(id(d) in t2_s1 && !isCrosswalkLocked) {
             hideCrosswalk(sunburst_s1, t2_s1[id(d)]);
@@ -464,6 +492,7 @@
           else if (id(d) in t2_s1 && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
             lockedID = id(d);
+            lockedFrom = LOCKED_FROM_T2;
           }
         })
         .each(stash);
