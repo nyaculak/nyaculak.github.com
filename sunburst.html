@@ -215,15 +215,18 @@
       // populate key and end nodes
       ds.forEach(function(d) {
         var key_node = null;
+        var nodes = [];
         walkBranch(d, function(node) {
           if (!node.marked) return;
           node.marked = null;
           node._children = node.children;
           node.children = null;
           key_node = node;
+          key_node._children.forEach(function(d) { walkTree(d, function(node) {
+            nodes.push(node);
+          })});
         });
         if(key_node) {
-          var nodes = [];
           key_node._children.forEach(function(d) { walkTree(d, function(node) {
             nodes.push(node);
           })});
