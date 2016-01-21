@@ -395,11 +395,13 @@
           if(isCrosswalkLocked) {
             isCrosswalkLocked = false;
             justCanceledLock = true;
+            clearHighlight();
           }
           else if (id(d) in t1_s1 && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
             lockedID = id(d);
             lockedFrom = LOCKED_FROM_T1;
+            highlight(sunburst_t1, d);
           }
         })
         .each(stash);
@@ -441,11 +443,13 @@
           if(isCrosswalkLocked) {
             isCrosswalkLocked = false;
             justCanceledLock = true;
+            clearHighlight();
           }
           else if ( (id(d) in t1_s1 || id(d) in t2_s1) && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
             lockedID = id(d);
             lockedFrom = LOCKED_FROM_S1_BOTH;
+            highlight(sunburst_s1, d);
           }
         })
         .each(stash);
@@ -484,11 +488,13 @@
           if(isCrosswalkLocked) {
             isCrosswalkLocked = false;
             justCanceledLock = true;
+            clearHighlight();
           }
           else if (id(d) in t2_s1 && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
             lockedID = id(d);
             lockedFrom = LOCKED_FROM_T2;
+            highlight(sunburst_t2, d);
           }
         })
         .each(stash);
@@ -496,6 +502,35 @@
 
     // Helper functions ////////////////////////////////////////////////////////
     // minimizes all the nodes at the specified depth
+    function highlight(sunburst, d) {
+      var nodes = []
+      walkBranch(d, function(x) {nodes.push(x);});
+      sunburst.paths
+        .transition()
+          .filter(function(d) {return nodes.indexOf(d) < 0;})
+          .duration(450)
+          .ease("cubic-in-out")
+          .attrTween("opacity", function(d) {
+              var x = d3.interpolate(1, 0.1);
+              return function(t) {return d.opacity = x(t);};
+          });
+      clearHighlight.sunburst = sunburst;
+    }
+
+    function clearHighlight() {
+      if (clearHighlight.sunburst) {
+        clearHighlight.sunburst.paths
+          .transition()
+            .duration(450)
+            .ease("cubic-in-out")
+            .attrTween("opacity", function(d) {
+                var x = d3.interpolate(d.opacity, 1);
+                return function(t) {return d.opacity = x(t);};
+            });
+        clearHighlight.sunburst = null;
+      }
+    }
+
     function collapse(tree, depth) {
       walkTree(tree, function(d) {
         if (d.depth == depth) {
