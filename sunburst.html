@@ -211,7 +211,7 @@
       // cancel any showCrosswalk events
       timeout_ids.forEach(function(d) { clearTimeout(d); });
       timeout_ids = [];
-
+      if (!ds) return;
       // key nodes will transition
       var key_nodes = [];
 
@@ -276,6 +276,7 @@
     }
 
     function showCrosswalk(sunburst, ds) {
+      if (!ds) return;
       timeout_ids.push(setTimeout(function() {
         // key nodes are the ones that will actually animate
         var key_nodes = [];
