@@ -81,6 +81,8 @@
 
     var LOCKED_FROM_T1 = "LOCKED.FROM.T1",
         LOCKED_FROM_S1_BOTH = "LOCKED.FROM.S1.BOTH",
+        LOCKED_FROM_S1_T1 = "LOCKED.FROM.S1.T1",
+        LOCKED_FROM_S1_T2 = "LOCKED.FROM.S1.T2",
         LOCKED_FROM_T2 = "LOCKED.FROM.T2";
 
     var t1_s1, t2_s1,
@@ -369,8 +371,16 @@
           hideCrosswalk(sunburst_s1, t2_s1[lockedID]);
           break;
         case LOCKED_FROM_S1_BOTH:
-          console.log("s1");
+          console.log("s1both");
           hideCrosswalk(sunburst_t1, t1_s1[lockedID]);
+          hideCrosswalk(sunburst_t2, t2_s1[lockedID]);
+          break;
+        case LOCKED_FROM_S1_T1:
+          console.log("s1t1");
+          hideCrosswalk(sunburst_t1, t1_s1[lockedID]);
+          break;
+        case LOCKED_FROM_S1_T2:
+          console.log("s1t2");
           hideCrosswalk(sunburst_t2, t2_s1[lockedID]);
           break;
       }
@@ -468,7 +478,12 @@
           else if ( (id(d) in t1_s1 || id(d) in t2_s1) && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
             lockedID = id(d);
-            lockedFrom = LOCKED_FROM_S1_BOTH;
+            if(id(d) in t1_s1 && id(d) in t2_s1)
+              lockedFrom = LOCKED_FROM_S1_BOTH;
+            else if(id(d) in t1_s1)
+              lockedFrom = LOCKED_FROM_S1_T1;
+            else if(id(d) in t2_s1)
+              lockedFrom = LOCKED_FROM_S1_T2;
             highlight(sunburst_s1, d);
           }
         })
