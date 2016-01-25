@@ -299,23 +299,24 @@
         new_nodes = new_nodes.concat(end_nodes[i]);
       }
 
-      sunburst.paths
-          .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
-          .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
-        .transition()
-          .duration(450)
-          .ease("cubic-in-out")
-          .attrTween("d", arcTweenData)
-          .attrTween("opacity", function(d) {
-              var x = d3.interpolate(d.opacity, 1);
-              d.opacity = 1;
-              return function(t) { return x(t); };
-          })
-          .attrTween("display", function (d, i) {
-            return d.depth == 0
-                ? function (t) { return "none"; }
-                : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
-          });
+      if (key_nodes.length > 0)
+        sunburst.paths
+            .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+            .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
+          .transition()
+            .duration(450)
+            .ease("cubic-in-out")
+            .attrTween("d", arcTweenData)
+            .attrTween("opacity", function(d) {
+                var x = d3.interpolate(d.opacity, 1);
+                d.opacity = 1;
+                return function(t) { return x(t); };
+            })
+            .attrTween("display", function (d, i) {
+              return d.depth == 0
+                  ? function (t) { return "none"; }
+                  : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
+            });
     }
 
     function showCrosswalk(sunburst, ds) {
