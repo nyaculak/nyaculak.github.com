@@ -41,6 +41,7 @@
     }
     body {
       text-align:center;
+      font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
     }
     #infobox div {
       margin: 2px;
@@ -430,6 +431,7 @@
           }
           else if (id(d) in t1_s1 && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
+            justCanceledLock = false;
             lockedID = id(d);
             lockedFrom = LOCKED_FROM_T1;
             highlight(sunburst_t1, d);
@@ -478,6 +480,7 @@
           }
           else if ( (id(d) in t1_s1 || id(d) in t2_s1) && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
+            justCanceledLock = false;
             lockedID = id(d);
             if(id(d) in t1_s1 && id(d) in t2_s1)
               lockedFrom = LOCKED_FROM_S1_BOTH;
@@ -528,6 +531,7 @@
           }
           else if (id(d) in t2_s1 && !isCrosswalkLocked) {
             isCrosswalkLocked = true;
+            justCanceledLock = false;
             lockedID = id(d);
             lockedFrom = LOCKED_FROM_T2;
             highlight(sunburst_t2, d);
