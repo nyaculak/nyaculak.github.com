@@ -8,20 +8,67 @@
   <meta name="author" content="">
 
   <title>Sunburst</title>
+  <link href='https://fonts.googleapis.com/css?family=Quattrocento+Sans:400,700' rel='stylesheet' type='text/css'>
+  <style>
+    h1 {
+      font-family: 'Quattrocento Sans', sans-serif;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-family: 'Quattrocento Sans', sans-serif;
+    }
+    .colorblock {
+      width: 13px;
+      height: 13px;
+      display: inline-block;
+      background: #DB18DB;
+    }
+
+    h2, h4 {
+      margin: 0 auto;
+    }
+    body {
+      text-align:center;
+      font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+    }
+    #infobox div {
+      margin: 2px;
+    }
+    .label {
+      font-family: 'Quattrocento Sans', sans-serif;
+      font-weight: bold;
+    }
+    .updateable { min-height: 54px; }
+    #directions {
+      width: 1240px;
+      margin: 0 auto;
+      text-align:left;
+    }
+    #sunburst-labels {
+      width: 1240px;
+      margin: 0 auto;
+    }
+    .third {
+      font-family: 'Quattrocento Sans', sans-serif;
+      width: 33%;
+      display:inline-block;
+    }
+    path:hover {
+      opacity: .5;
+    }
+  </style>
 </head>
 <body>
   <div id="infobox">
     <div id="title">
-      <h2>Common Core Standard Alignment Tool</h2>
+      <h1>Common Core Standard Alignment Tool</h1>
     </div>
     <div id="standard">
       <div class="label">Standard</div> <div class="updateable">Here</div>
     </div>
     <div id="crosswalk">
       <div class="label">Crosswalk</div> <div class="updateable">Here</div>
-    </div>
-    <div id="directions">
-      <div class="label">Directions</div> <div class="updateable">Here</div>
     </div>
   </div>
   <div id="sunburst-labels">
@@ -35,34 +82,7 @@
       <h4>South Carolina Academic Standards for Mathematics<h4>
     </div>
   </div>
-  <style>
-    h2, h4 {
-      margin: 0 auto;
-    }
-    body {
-      text-align:center;
-      font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
-    }
-    #infobox div {
-      margin: 2px;
-    }
-    .label {
-      font-weight: bold;
-    }
-    .updateable { min-height: 54px; }
-    #directions .updateable { min-height: 36px; }
-    #sunburst-labels {
-      width: 1240px;
-      margin: 0 auto;
-    }
-    .third {
-      width: 33%;
-      display:inline-block;
-    }
-    path:hover {
-      opacity: .5;
-    }
-  </style>
+
   <script src="http://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
   <script>
     var CHILD_PRED = "http://purl.org/gem/qualifiers/hasChild",
@@ -634,5 +654,18 @@
       }
     }
   </script>
+  <div id="directions">
+    <h3>Directions:</h3>
+    Explore the educational standards by clicking on the different colored arcs.
+    Use your mouse to hover over the visualization for more information about a
+    particular standard. Standards that are linked to one or more standards in
+    another domain with a "crosswalk" are shown in pink
+    ( <div class="colorblock"></div> )
+    . Hovering over one of
+    these standards will visualize the crosswalk. By right clicking you can
+    freeze the visualization to better examine the crosswalk. To unfreeze,
+    right click again anywhere on the visualization.
+
+  </div>
 </body>
 </html>
