@@ -64,10 +64,10 @@
       <h1>Common Core Standard Alignment Tool</h1>
     </div>
     <div id="standard">
-      <div class="label">Standard</div> <div class="updateable">Here</div>
+      <div class="label">Standard</div> <div class="updateable"></div>
     </div>
     <div id="crosswalk">
-      <div class="label">Crosswalk</div> <div class="updateable">Here</div>
+      <div class="label">Crosswalk</div> <div class="updateable"></div>
     </div>
   </div>
   <div id="sunburst-labels">
@@ -604,7 +604,7 @@
     function id(d) { return d.id ? d.id : ""; }
 
     function genId(d) { return d.id || (d.id = ++i); }
-    
+
     // specifies how to retrieve children from the json
     function children(sunburst) {
       return function (d) {
