@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <title>Sunburst</title>
+  <style>
+    body {
+      text-align:center;
+      font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+    }
+
+    h1 {
+      font-weight: 700;
+      margin: 5px auto;
+    }
+
+    h2, h4 {
+      margin: 0 auto;
+    }
+
+    .colorblock {
+      width: 13px;
+      height: 13px;
+      display: inline-block;
+      background: #DB18DB;
+    }
+
+    #infobox div {
+      margin: 2px;
+    }
+    .label {
+      font-weight: bold;
+    }
+    .updateable { min-height: 54px; }
+    #directions {
+      width: 1240px;
+      margin: 0 auto;
+      text-align:left;
+    }
+    #sunburst-labels {
+      width: 1240px;
+      margin: 0 auto;
+    }
+    .third {
+      width: 33%;
+      display:inline-block;
+    }
+    path:hover {
+      opacity: .5;
+    }
+  </style>
+</head>
+<body>
+  <div id="infobox">
+    <div id="title">
+      <h1>Common Core Standard Alignment Tool</h1>
+    </div>
+    <div id="standard">
+      <div class="label">Standard</div> <div class="updateable">Here</div>
+    </div>
+    <div id="crosswalk">
+      <div class="label">Crosswalk</div> <div class="updateable">Here</div>
+    </div>
+  </div>
+  <div id="sunburst-labels">
+    <div id="t1label" class="third">
+      <h4>English Language Arts Grade Level Expectations</h4>
+    </div>
+    <div id="s1label" class="third">
+      <h4>Common Core State Standards for English Language</h4>
+    </div>
+    <div id="t2label" class="third">
+      <h4>SC Academic Standards for English Language Arts<h4>
+    </div>
+  </div>
+
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  <script>
+    var CHILD_PRED = "http://purl.org/gem/qualifiers/hasChild",
+        ID_PRED = "http://purl.org/ASN/schema/core/identifier",
+        HIDDEN_CHILD_PRED = "_http://purl.org/gem/qualifiers/hasChild",
+        DESCR_PRED = "http://purl.org/dc/terms/description",
+        ROOT_NAME = "http://asn.jesandco.org/resources/D10003FC",
+        ROOT_NAME_T1 = "http://asn.jesandco.org/resources/D1000124",
+        ROOT_NAME_T2 = "http://asn.jesandco.org/resources/D1000379",
+        TARGET_URI = "subjectURI",
+        SUBJECT_URI = "objectURI";
+
+    var isCrosswalkLocked = false,
+        justCanceledLock = false,
+        lockedID = "",
+        lockedFrom = "";
+
+    var LOCKED_FROM_T1 = "LOCKED.FROM.T1",
+        LOCKED_FROM_S1_BOTH = "LOCKED.FROM.S1.BOTH",
+        LOCKED_FROM_S1_T1 = "LOCKED.FROM.S1.T1",
+        LOCKED_FROM_S1_T2 = "LOCKED.FROM.S1.T2",
+        LOCKED_FROM_T2 = "LOCKED.FROM.T2";
+
+    var t1_s1, t2_s1,
+        i = 0,
+        width  = 400, // 600
+        height = 400,
+        radius = Math.min(width, height) / 2;
+
+    var x = d3.scale.linear().range([0, 2 * Math.PI]),
+        y = d3.scale.sqrt().range([0, radius]);
+
+    var text = d3.select("#standard").select(".updateable"),
+        crosswalk = d3.select("#crosswalk").select(".updateable");
+
+    var mastersvg = d3.select("body").append("svg")
+      .attr("width", width * 3 + 20 + 20)
+      .attr("height", height + 20)
+      .attr("margin", "0 auto");
+
+    var svg = mastersvg.append("g")
+          .attr("transform", "translate(" + (width / 2 + 10) + "," + (height / 2 + 10) + ")"),
+        svg2 = mastersvg.append("g")
+          .attr("transform", "translate(" + (3 * width / 2 + 20) + "," + (height / 2 + 10) + ")"),
+        svg3 = mastersvg.append("g")
+          .attr("transform", "translate(" + (5 * width / 2 + 30) + "," + (height / 2 + 10) + ")");
+
+    var arc = d3.svg.arc()
+      .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x))); })
+      .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x + d.dx))); })
+      .innerRadius(function(d) { return Math.max(0, y(d.y)); })
+      .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
+
+    var sunburst_s1 = { "partition" : d3.layout.partition().sort(null).value(function(d) {return 1;}),
+                        "data"      : null,
+                        "root"      : null,
+                        "paths"     : null },
+        sunburst_t1 = { "partition" : d3.layout.partition().sort(null).value(function(d) {return 1;}),
+                        "data"      : null,
+                        "root"      : null,
+                        "paths"     : null },
+        sunburst_t2 = { "partition" : d3.layout.partition().sort(null).value(function(d) {return 1;}),
+                        "data"      : null,
+                        "root"      : null,
+                        "paths"     : null };
+
+    var timeout_ids = [];
+
+    d3.json("/data/s2.json", function(error, json) {
+      d3.json("/data/t3.json", function(error2, json2) {
+        d3.json("/data/t4.json", function(error3, json3) {
+          d3.csv("/data/t3-s2.csv", function(cw) {
+            d3.csv("/data/t4-s2.csv", function(cw2) {
+              if(error || error2 || error3) throw error;
+              sunburst_s1.data = json;  sunburst_s1.root = json[ROOT_NAME];
+              sunburst_t1.data = json2; sunburst_t1.root = json2[ROOT_NAME_T1];
+              sunburst_t2.data = json3; sunburst_t2.root = json3[ROOT_NAME_T2];
+
+              var map = {};
+
+              cw.forEach(function(d) {
+                if(map[d[TARGET_URI].slice(-8)]) {
+                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
+                } else {
+                  map[d[TARGET_URI].slice(-8)] = [];
+                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
+                }
+                if(map[d[SUBJECT_URI].slice(-8)]) {
+                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t1.data[d[TARGET_URI]]);
+                } else {
+                  map[d[SUBJECT_URI].slice(-8)] = [];
+                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t1.data[d[TARGET_URI]]);
+                }
+              });
+              t1_s1 = map;
+
+              map = {};
+              cw2.forEach(function(d) {
+                if(map[d[TARGET_URI].slice(-8)]) {
+                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
+                } else {
+                  map[d[TARGET_URI].slice(-8)] = [];
+                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
+                }
+                if(map[d[SUBJECT_URI].slice(-8)]) {
+                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t2.data[d[TARGET_URI]]);
+                } else {
+                  map[d[SUBJECT_URI].slice(-8)] = [];
+                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t2.data[d[TARGET_URI]]);
+                }
+              });
+              t2_s1 = map;
+
+              render();
+            });
+          });
+        });
+      });
+    });
+
+    function toggle(sunburst) {
+      return function (d) {
+        if(!isCrosswalkLocked) {
+          // remove children of clicked node
+          var buf = d._children;
+          d._children = d.children;
+          d.children = buf;
+
+          // compute the new layout
+          var old_d = {x: d.x, dx: d.dx, y: d.y, dy: d.dy};
+          var new_nodes = sunburst.partition.nodes(sunburst.root);
+
+          // update the removed children to have 0 area put occupy the correct position
+          // add the children back into the nodes of the computed layout
+          if (d._children)
+            d._children.forEach(function (node) { walkTree(node, function (x) {
+              x.x = d.x + d.dx / 2.;
+              x.dx = 0;
+              x.y = d.y + d.dy;
+
+              new_nodes.push(x);
+            });});
+
+          if (d.children)
+            d.children.forEach(function (node) { walkTree(node, function(x) {
+              x.x0 = old_d.x + old_d.dx / 2.;
+              x.dx0 = 0;
+              x.y0 = old_d.y + old_d.dy;
+            });});
+
+          // apply transition
+          sunburst.paths
+              .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+              .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
+            .transition()
+              .duration(450)
+              .ease("cubic-in-out")
+              .attrTween("d", arcTweenData)
+              .attrTween("display", function (d, i) {
+                return d.depth == 0
+                    ? function (t) { return "none"; }
+                    : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
+              });
+        }
+      }
+    }
+
+    function hideCrosswalk(sunburst, ds) {
+      // cancel any showCrosswalk events
+      timeout_ids.forEach(function(d) { clearTimeout(d); });
+      timeout_ids = [];
+      if (!ds) return;
+      // key nodes will transition
+      var key_nodes = [];
+
+      // end nodes will disapear at then end of the transistion
+      var end_nodes = [];
+
+      // populate key and end nodes
+      ds.forEach(function(d) {
+        var key_node = null;
+        var nodes = [];
+        walkBranch(d, function(node) {
+          if (!node.marked) return;
+          node.marked = null;
+          node._children = node.children;
+          node.children = null;
+          key_node = node;
+          key_node._children.forEach(function(d) { walkTree(d, function(node) {
+            nodes.push(node);
+          })});
+        });
+        if(key_node) {
+          key_node._children.forEach(function(d) { walkTree(d, function(node) {
+            nodes.push(node);
+          })});
+          end_nodes.push(nodes);
+          key_nodes.push(key_node);
+        }
+      });
+
+      // recompute the sunburst
+      var new_nodes = sunburst.partition.nodes(sunburst.root);
+
+      // set the end position of end nodes
+      for (i in key_nodes) {
+        end_nodes[i].forEach(function(d) {
+          d.x = key_nodes[i].x + key_nodes[i].dx / 2.;
+          d.dx = 0;
+          d.y = key_nodes[i].y + key_nodes[i].dy;
+        });
+
+        // add the end nodes to the list of nodes that will be transitioned
+        new_nodes = new_nodes.concat(end_nodes[i]);
+      }
+
+      if (key_nodes.length > 0)
+        sunburst.paths
+            .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+            .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
+          .transition()
+            .duration(450)
+            .ease("cubic-in-out")
+            .attrTween("d", arcTweenData)
+            .attrTween("opacity", function(d) {
+                var x = d3.interpolate(d.opacity, 1);
+                d.opacity = 1;
+                return function(t) { return x(t); };
+            })
+            .attrTween("display", function (d, i) {
+              return d.depth == 0
+                  ? function (t) { return "none"; }
+                  : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
+            });
+    }
+
+    function showCrosswalk(sunburst, ds) {
+      if (!ds) return;
+      timeout_ids.push(setTimeout(function() {
+        // key nodes are the ones that will actually animate
+        var key_nodes = [];
+
+        var crosswalks = [];
+        ds.forEach(function(d) {
+          var key_node = null;
+          walkBranch(d, function(node) {
+            if (node._children) {
+              node.marked = true;
+              node.children = node._children;
+              node._children = null;
+              key_node = node;
+            }
+            crosswalks.push(node);
+            node.opacity = 1;
+          });
+          if(key_node) key_nodes.push(key_node);
+        });
+        var key_nodes_clone = [];
+
+        key_nodes.forEach(function(d) {
+          key_nodes_clone.push({x: d.x, dx: d.dx,
+                                y: d.y, dy: d.dy});
+        });
+
+        // recompute sunburst
+        var new_nodes = sunburst.partition.nodes(sunburst.root);
+
+        // assign starting values
+        for (i in key_nodes) {
+          walkTree(key_nodes[i], function(d) {
+            if (d.depth == key_nodes[i].depth) return;
+            d.x0 = key_nodes_clone[i].x + key_nodes_clone[i].dx / 2.;
+            d.dx0 = 0;
+            d.y0 = key_nodes_clone[i].y + key_nodes_clone[i].dy;
+          });
+        }
+
+        sunburst.paths
+            .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+          .transition()
+            .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
+            .duration(450)
+            .ease("cubic-in-out")
+            .attrTween("d", arcTweenData)
+            .attrTween("display", function (d, i) {
+              return d.depth == 0
+                  ? function (t) { return "none"; }
+                  : function (t) { return t == 1 && d.dx == 0 ? "none" : null; };
+            })
+            .filter(function(d) {return crosswalks.indexOf(d) < 0})
+            .duration(450)
+            .ease("cubic-in-out")
+            .attrTween("opacity", function(d) {
+                var x = d3.interpolate(1, 0.1);
+                return function(t) {return d.opacity = x(t);};
+            });
+
+      }, 500));
+    }
+
+    function hideCWAfterCancel(lockedID, lockedFrom) {
+      switch(lockedFrom) {
+        case LOCKED_FROM_T1:
+          console.log("t1");
+          hideCrosswalk(sunburst_s1, t1_s1[lockedID]);
+          break;
+        case LOCKED_FROM_T2:
+          console.log("t2");
+          hideCrosswalk(sunburst_s1, t2_s1[lockedID]);
+          break;
+        case LOCKED_FROM_S1_BOTH:
+          console.log("s1both");
+          hideCrosswalk(sunburst_t1, t1_s1[lockedID]);
+          hideCrosswalk(sunburst_t2, t2_s1[lockedID]);
+          break;
+        case LOCKED_FROM_S1_T1:
+          console.log("s1t1");
+          hideCrosswalk(sunburst_t1, t1_s1[lockedID]);
+          break;
+        case LOCKED_FROM_S1_T2:
+          console.log("s1t2");
+          hideCrosswalk(sunburst_t2, t2_s1[lockedID]);
+          break;
+      }
+    }
+
+    function render() {
+      var nodes,
+          color = d3.scale.category20c();
+      var getColor = function(d) { return color((d.children || d._children ? d : d.parent).id);};
+
+      nodes = sunburst_t1.partition.children(children(sunburst_t1)).nodes(sunburst_t1.root);
+      collapse(nodes[0], 1);
+      sunburst_t1.partition.children(function(d) {return d.children;}).nodes(sunburst_t1.root);
+
+      sunburst_t1.paths = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      sunburst_t1.paths.enter().append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
+        .attr("fill", function(d) { return id(d) in t1_s1 ? "#DB18DB" : getColor(d); })
+        .attr("stroke", "#fff")
+        .on('mouseover', function(d) {
+          if (d.depth != null) {
+            if(isCrosswalkLocked) crosswalk.text(d[DESCR_PRED][0].value);
+            else text.text(d[DESCR_PRED][0].value);
+          }
+          if (id(d) in t1_s1 && !isCrosswalkLocked) showCrosswalk(sunburst_s1, t1_s1[id(d)]);
+        })
+        .on('mouseout',  function(d) {
+          if(!isCrosswalkLocked) text.text("");
+          crosswalk.text("");
+          if(justCanceledLock) {
+            //hideCrosswalk(sunburst_s1, t1_s1[lockedID]);
+            hideCWAfterCancel(lockedID, lockedFrom);
+            justCanceledLock = false;
+          } else if(id(d) in t1_s1 && !isCrosswalkLocked) {
+            hideCrosswalk(sunburst_s1, t1_s1[id(d)]);
+          }
+        })
+        .on('click', toggle(sunburst_t1))
+        .on('contextmenu', function(d) {
+          d3.event.preventDefault();
+          if(isCrosswalkLocked) {
+            isCrosswalkLocked = false;
+            justCanceledLock = true;
+            clearHighlight();
+          }
+          else if (id(d) in t1_s1 && !isCrosswalkLocked) {
+            isCrosswalkLocked = true;
+            justCanceledLock = false;
+            lockedID = id(d);
+            lockedFrom = LOCKED_FROM_T1;
+            highlight(sunburst_t1, d);
+          }
+        })
+        .each(stash);
+
+      nodes = sunburst_s1.partition.children(children(sunburst_s1)).nodes(sunburst_s1.root);
+      collapse(nodes[0], 1);
+      sunburst_s1.partition.children(function(d){return d.children;}).nodes(sunburst_s1.root);
+
+      sunburst_s1.paths = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      sunburst_s1.paths.enter().append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
+        .style("fill", function(d) { return id(d) in t1_s1 || id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
+        .style("stroke", "#fff")
+        .on('mouseover', function(d) {
+          if (d.depth != null) {
+            if(isCrosswalkLocked) crosswalk.text(d[DESCR_PRED][0].value);
+            else text.text(d[DESCR_PRED][0].value);
+          }
+          if (id(d) in t1_s1 && !isCrosswalkLocked) showCrosswalk(sunburst_t1, t1_s1[id(d)]);
+          if (id(d) in t2_s1 && !isCrosswalkLocked) showCrosswalk(sunburst_t2, t2_s1[id(d)]);
+        })
+        .on('mouseout',  function(d) {
+          if(!isCrosswalkLocked) text.text("");
+          crosswalk.text("");
+          if(justCanceledLock) {
+            //hideCrosswalk(sunburst_t1, t1_s1[lockedID]);
+            //hideCrosswalk(sunburst_t2, t2_s1[lockedID]);
+            hideCWAfterCancel(lockedID, lockedFrom);
+            justCanceledLock = false;
+          } else {
+            if (id(d) in t1_s1 && !isCrosswalkLocked) hideCrosswalk(sunburst_t1, t1_s1[id(d)]);
+            if (id(d) in t2_s1 && !isCrosswalkLocked) hideCrosswalk(sunburst_t2, t2_s1[id(d)]);
+          }
+        })
+        .on('click', toggle(sunburst_s1))
+        .on('contextmenu', function(d) {
+          d3.event.preventDefault();
+          if(isCrosswalkLocked) {
+            isCrosswalkLocked = false;
+            justCanceledLock = true;
+            clearHighlight();
+          }
+          else if ( (id(d) in t1_s1 || id(d) in t2_s1) && !isCrosswalkLocked) {
+            isCrosswalkLocked = true;
+            justCanceledLock = false;
+            lockedID = id(d);
+            if(id(d) in t1_s1 && id(d) in t2_s1)
+              lockedFrom = LOCKED_FROM_S1_BOTH;
+            else if(id(d) in t1_s1)
+              lockedFrom = LOCKED_FROM_S1_T1;
+            else if(id(d) in t2_s1)
+              lockedFrom = LOCKED_FROM_S1_T2;
+            highlight(sunburst_s1, d);
+          }
+        })
+        .each(stash);
+
+      nodes = sunburst_t2.partition.children(children(sunburst_t2)).nodes(sunburst_t2.root);
+      collapse(nodes[0], 1);
+      sunburst_t2.partition.children(function(d){return d.children}).nodes(sunburst_t2.root);
+
+      sunburst_t2.paths = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      sunburst_t2.paths.enter().append("path")
+        .attr("d", arc)
+        .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
+        .style("fill", function(d) { return id(d) in t2_s1 ? "#DB18DB" : getColor(d); })
+        .style("stroke", "#fff")
+        .on('mouseover', function(d) {
+          if (d.depth != null) {
+            if(isCrosswalkLocked) crosswalk.text(d[DESCR_PRED][0].value);
+            else text.text(d[DESCR_PRED][0].value);
+          }
+          if (id(d) in t2_s1 && !isCrosswalkLocked) showCrosswalk(sunburst_s1, t2_s1[id(d)]);
+        })
+        .on('mouseout',  function(d) {
+          if(!isCrosswalkLocked) text.text("");
+          crosswalk.text("");
+          if(justCanceledLock) {
+            //hideCrosswalk(sunburst_s1, t2_s1[lockedID]);
+            hideCWAfterCancel(lockedID, lockedFrom);
+            justCanceledLock = false;
+          } else if(id(d) in t2_s1 && !isCrosswalkLocked) {
+            hideCrosswalk(sunburst_s1, t2_s1[id(d)]);
+          }
+        })
+        .on('click', toggle(sunburst_t2))
+        .on('contextmenu', function(d) {
+          d3.event.preventDefault();
+          if(isCrosswalkLocked) {
+            isCrosswalkLocked = false;
+            justCanceledLock = true;
+            clearHighlight();
+          }
+          else if (id(d) in t2_s1 && !isCrosswalkLocked) {
+            isCrosswalkLocked = true;
+            justCanceledLock = false;
+            lockedID = id(d);
+            lockedFrom = LOCKED_FROM_T2;
+            highlight(sunburst_t2, d);
+          }
+        })
+        .each(stash);
+    }
+
+    // Helper functions ////////////////////////////////////////////////////////
+    // minimizes all the nodes at the specified depth
+    function highlight(sunburst, d) {
+      var nodes = []
+      walkBranch(d, function(x) {nodes.push(x);});
+      sunburst.paths
+        .transition()
+          .filter(function(d) {return nodes.indexOf(d) < 0;})
+          .duration(450)
+          .ease("cubic-in-out")
+          .attrTween("opacity", function(d) {
+              var x = d3.interpolate(1, 0.1);
+              return function(t) {return d.opacity = x(t);};
+          });
+      clearHighlight.sunburst = sunburst;
+    }
+
+    function clearHighlight() {
+      if (clearHighlight.sunburst) {
+        clearHighlight.sunburst.paths
+          .transition()
+            .duration(450)
+            .ease("cubic-in-out")
+            .attrTween("opacity", function(d) {
+                var x = d3.interpolate(d.opacity, 1);
+                return function(t) {return d.opacity = x(t);};
+            });
+        clearHighlight.sunburst = null;
+      }
+    }
+
+    function collapse(tree, depth) {
+      walkTree(tree, function(d) {
+        if (d.depth == depth) {
+          d._children = d.children;
+          d.children  = null;
+        }
+        if (d.depth > depth) {
+          d.dx = 0;
+        }
+      });
+    }
+
+    function id(d) { return d[ID_PRED] ? d[ID_PRED][0].value.slice(-8) : ""; }
+
+    // specifies how to retrieve children from the json
+    function children(sunburst) {
+      return function (d) {
+        var children = [];
+        if (d[CHILD_PRED]) {
+          d[CHILD_PRED].forEach(function (x){children.push(sunburst.data[x.value]);});
+        }
+        return children;
+      }
+    }
+
+    // applies a function to the entire tree
+    function walkTree(d, f) {
+      if (d.children)
+        d.children.forEach(function (x) { walkTree(x, f); });
+      f(d);
+    }
+
+    // similiar to walkTree except walks backwards up the tree
+    function walkBranch(d, f) {
+      var node = d;
+      while (node.parent) {
+        if (f) f(node);
+        node = node.parent;
+      }
+    }
+
+    // setup for switching data: stash the old values for transition.
+    function stash(d) {
+      d.x0  = d.x;
+      d.dx0 = d.dx;
+      d.y0  = d.y;
+      d.dy0 = d.dy;
+    }
+
+    // interpolate the arcs in data space for the transitions
+    function arcTweenData(a, i) {
+      var oi = d3.interpolate({x: a.x0, dx: a.dx0, y: a.y0, dy: a.dy0}, a);
+
+      return function (t) {
+        var b = oi(t);
+        a.x0  = b.x;
+        a.dx0 = b.dx;
+        a.y0  = b.y;
+        a.dy0 = b.dy;
+        return arc(b);
+      }
+    }
+  </script>
+  <div id="directions">
+    <h3>Directions:</h3>
+    Explore the educational standards by clicking on the different colored arcs.
+    Use your mouse to hover over the visualization for more information about a
+    particular standard. Standards that are linked to one or more standards in
+    another domain with a "crosswalk" are shown in pink
+    ( <div class="colorblock"></div> )
+    . Hovering over one of
+    these standards will visualize the crosswalk. By right clicking you can
+    freeze the visualization to better examine the crosswalk. To unfreeze,
+    right click again anywhere on the visualization.
+
+  </div>
+</body>
+</html>
