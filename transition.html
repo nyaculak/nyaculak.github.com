@@ -86,7 +86,7 @@ d3.json("/data/flare.json", function(error, root) {
   partition.nodes(root);
 
   var path = svg.selectAll("path")
-      .data(nodes, function(d) { return d.id || (d.id = ++i); })
+      .data(nodes, genId)
     .enter().append("path")
       .attr("d", arc)
       .attr("fill", function(d) { return color((d.children || d._children ? d : d.parent).name); })
@@ -102,7 +102,7 @@ d3.json("/data/flare.json", function(error, root) {
         : function(d) { return d.size; };
 
     path
-        .data(partition.value(value).nodes(root), function(d) { return d.id || (d.id = ++i); })
+        .data(partition.value(value).nodes(root), genId)
       .transition()
         .duration(1000)
         .attrTween("d", arcTweenData);
@@ -142,7 +142,7 @@ d3.json("/data/flare.json", function(error, root) {
 
     // apply transition
     path
-        .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+        .data(new_nodes, genId)
       .transition()
         .duration(1000)
         .attrTween("d", arcTweenData)

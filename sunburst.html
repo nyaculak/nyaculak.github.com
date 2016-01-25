@@ -160,34 +160,32 @@
               var map = {};
 
               cw.forEach(function(d) {
-                if(map[d[TARGET_URI].slice(-8)]) {
-                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
-                } else {
-                  map[d[TARGET_URI].slice(-8)] = [];
-                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
-                }
-                if(map[d[SUBJECT_URI].slice(-8)]) {
-                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t1.data[d[TARGET_URI]]);
-                } else {
-                  map[d[SUBJECT_URI].slice(-8)] = [];
-                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t1.data[d[TARGET_URI]]);
+                var node = sunburst_t1.data[d[TARGET_URI]];
+                if (node) {
+                  node.id = genId(node);
+                  if (!map[node.id]) map[node.id] = [];
+                  map[node.id].push(sunburst_s1.data[d[SUBJECT_URI]]);
+
+                  node = sunburst_s1.data[d[SUBJECT_URI]];
+                  node.id = genId(node);
+                  if (!map[node.id]) map[node.id] = [];
+                  map[node.id].push(sunburst_t1.data[d[TARGET_URI]])
                 }
               });
               t1_s1 = map;
 
               map = {};
               cw2.forEach(function(d) {
-                if(map[d[TARGET_URI].slice(-8)]) {
-                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
-                } else {
-                  map[d[TARGET_URI].slice(-8)] = [];
-                  map[d[TARGET_URI].slice(-8)].push(sunburst_s1.data[d[SUBJECT_URI]]);
-                }
-                if(map[d[SUBJECT_URI].slice(-8)]) {
-                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t2.data[d[TARGET_URI]]);
-                } else {
-                  map[d[SUBJECT_URI].slice(-8)] = [];
-                  map[d[SUBJECT_URI].slice(-8)].push(sunburst_t2.data[d[TARGET_URI]]);
+                var node = sunburst_t2.data[d[TARGET_URI]];
+                if (node) {
+                  node.id = genId(node);
+                  if (!map[node.id]) map[node.id] = [];
+                  map[node.id].push(sunburst_s1.data[d[SUBJECT_URI]]);
+
+                  node = sunburst_s1.data[d[SUBJECT_URI]];
+                  node.id = genId(node);
+                  if (!map[node.id]) map[node.id] = [];
+                  map[node.id].push(sunburst_t2.data[d[TARGET_URI]])
                 }
               });
               t2_s1 = map;
@@ -231,7 +229,7 @@
 
           // apply transition
           sunburst.paths
-              .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+              .data(new_nodes, genId)
               .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
             .transition()
               .duration(450)
@@ -297,7 +295,7 @@
 
       if (key_nodes.length > 0)
         sunburst.paths
-            .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+            .data(new_nodes, genId)
             .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
           .transition()
             .duration(450)
@@ -357,7 +355,7 @@
         }
 
         sunburst.paths
-            .data(new_nodes, function(d) { return d.id || (d.id = ++i); })
+            .data(new_nodes, genId)
           .transition()
             .attr("display", function(d) { return d.depth == 0 ? "none" : null;})
             .duration(450)
@@ -414,7 +412,7 @@
       collapse(nodes[0], 2);
       sunburst_t1.partition.children(function(d) {return d.children;}).nodes(sunburst_t1.root);
 
-      sunburst_t1.paths = svg.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      sunburst_t1.paths = svg.selectAll("path").data(nodes, genId);
       sunburst_t1.paths.enter().append("path")
         .attr("d", arc)
         .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
@@ -460,7 +458,7 @@
       collapse(nodes[0], 1);
       sunburst_s1.partition.children(function(d){return d.children;}).nodes(sunburst_s1.root);
 
-      sunburst_s1.paths = svg2.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      sunburst_s1.paths = svg2.selectAll("path").data(nodes, genId);
       sunburst_s1.paths.enter().append("path")
         .attr("d", arc)
         .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
@@ -514,7 +512,7 @@
       collapse(nodes[0], 1);
       sunburst_t2.partition.children(function(d){return d.children}).nodes(sunburst_t2.root);
 
-      sunburst_t2.paths = svg3.selectAll("path").data(nodes, function(d) { return d.id || (d.id = ++i); });
+      sunburst_t2.paths = svg3.selectAll("path").data(nodes, genId);
       sunburst_t2.paths.enter().append("path")
         .attr("d", arc)
         .attr("display", function(d) { return d.depth == 0 || d.dx == 0 ? "none" : null; }) // hide inner ring
@@ -600,8 +598,10 @@
       });
     }
 
-    function id(d) { return d[ID_PRED] ? d[ID_PRED][0].value.slice(-8) : ""; }
+    function id(d) { return d.id ? d.id : ""; }
 
+    function genId(d) { return d.id || (d.id = ++i); }
+    
     // specifies how to retrieve children from the json
     function children(sunburst) {
       return function (d) {
